@@ -58,6 +58,7 @@ function pageShell(active, body, lang = 'zh') {
       <button class="sm ghost" id="btnLang" title="${i18n.t(lang, '切换语言')}" aria-label="${i18n.t(lang, '切换语言')}">${lang === 'en' ? '中文' : 'EN'}</button>
     </div>
     <nav class="nav" aria-label="页面导航">${nav}</nav>
+    <a class="nav-quick" href="/monitor#check" title="${i18n.t(lang, '一键体检：12 项检查一次跑完')}"><span class="ico" aria-hidden="true">🩺</span><span>${i18n.t(lang, '一键体检')}</span></a>
     <div class="side-foot">
       <div class="row"><span class="dot" id="healthDot" aria-hidden="true"></span><span class="muted" id="healthText" role="status">${i18n.t(lang, '检测中…')}</span></div>
       <div class="row"><span class="tag warn hidden" id="unsaved" title="有改动还没保存">未保存</span>

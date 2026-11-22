@@ -57,6 +57,7 @@ function ruleHtml(r, i) {
       <input data-k="name" value="${esc(r.name || '')}" placeholder="规则名字（可留空）" style="max-width:200px" />
       <span class="tag ${scoped ? 'acc' : ''}">${scoped ? '专属' : '全局'}</span>
       <span class="tag mono">${esc(r.path || '/')}</span>
+      ${r.host ? `<span class="badge-host" title="只对 ${esc(r.host)} 生效">${esc(r.host)}</span>` : ''}
       <span class="mono muted" style="font-size:11.5px">→ ${esc(r.upstream || '未填上游')}${upDot(r.upstream)}</span>
       <span class="tag mono hits hidden" data-hits="${esc(r.id || '')}" title="最近访问日志里命中这条规则的次数（含 p95 耗时）"></span>
       <div class="right row">

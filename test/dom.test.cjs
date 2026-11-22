@@ -126,6 +126,8 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
       // v0.29.17：焦点标记要扛过一次 5 秒轮询重绘（之前闪一下就被重绘冲掉了）
       await pollTick(rwin, 1);
       chk('规则页: 轮询重绘后焦点标记仍在', !!rd.querySelector('.rule[data-focused]'), String(!!rd.querySelector('.rule[data-focused]')));
+      // v0.29.24：只对某域名生效的规则，主机名单独做徽标
+      chk('规则页: 主机名用徽标显示', !rd.querySelector('.rule') || !!rd.querySelector('.rule .badge-host') || !rd.querySelector('[data-k="host"]'), '');
       chk('规则页: focus 页面无脚本错误', rErrs.length === 0, rErrs.join(' | ').slice(0, 160));
       chk('规则页: 每条规则有命中统计徽标', rd.querySelectorAll('#ruleList [data-hits]').length > 0,
         String(rd.querySelectorAll('#ruleList [data-hits]').length));
@@ -160,6 +162,13 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     chk('隧道: 在线时卡片里有公网地址', anyUrl ? hasUrl : true, anyUrl ? '' : '（当前无线隧道，跳过）');
     chk('隧道: 在线时状态徽章出现', anyUrl ? runningNow : true, anyUrl ? '' : '（当前无线隧道，跳过）');
     chk('隧道: 每个出口都有状态标签', doc.querySelectorAll('#tunnelList .pill, #tunnelList .tag').length >= 2, '');
+    // v0.29.24：卡片头只留「操作 ⋯」+「删除」，重启/启动/停止按需展开
+    {
+      const pop = doc.querySelector('#tunnelList .menu-pop');
+      const outside = [...doc.querySelectorAll('#tunnelList [data-act]')]
+        .filter((b) => !b.closest('.menu-pop')).map((b) => b.getAttribute('data-act'));
+      chk('隧道: 重启已收进 ⋯ 菜单', !!pop && !!pop.querySelector('[data-act="restart"]') && !outside.includes('restart'), outside.join(','));
+    }
     chk('隧道: 0 条专属规则时不显示那个标签', !/0 条仅限此出口/.test(doc.body.textContent), '');
     // 回归：在「出口设置」里输入后，5 秒轮询不能把未保存的输入清掉
     {
@@ -378,6 +387,8 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     chk('设置: 备份表在小屏可堆叠（class）', !!doc.querySelector('#backupList table, #backupList .empty'), '');
     chk('设置: 有跳到主内容的链接', !!doc.querySelector('.skip-link'), '');
     chk('设置: 有命令面板按钮', !!doc.querySelector('#btnPalette'), '');
+    // v0.29.24：侧栏加「一键体检」直连入口（命令面板之外的第二条路）
+    chk('侧栏: 有一键体检入口', !!doc.querySelector('a.nav-quick[href="/monitor#check"]'), '');
     chk('设置: 无脚本错误', errors.length === 0, errors.join(' | ').slice(0, 160));
   }
 

@@ -35,10 +35,10 @@ function exitCard(t, d) {
       ${tokenWarn}
       ${hostWarn}
       <div class="right">
-        <button class="sm ghost" data-act="restart" title="重启这条隧道（命名隧道域名不变）">重启</button>
         <div class="menu">
-          <button class="sm ghost" data-menu="1" aria-haspopup="true" aria-expanded="false" title="更多操作">⋯</button>
+          <button class="sm ghost" data-menu="1" aria-haspopup="true" aria-expanded="false" title="重启 / 启动 / 停止 / 二维码…">操作 ⋯</button>
           <div class="menu-pop hidden">
+            <button type="button" data-act="restart">重启（域名不变）</button>
             <button type="button" data-act="start">启动</button>
             <button type="button" data-act="stop">停止</button>
             <button type="button" data-act="qr">二维码</button>

@@ -28,7 +28,7 @@ function paintRules(d) {
   const anyScoped = list.some((r) => !!r.tunnelId);
   const rows = list.slice(0, 6).map((r) => `<tr>
       <td class="mono">${esc(r.path || '/')}</td>
-      <td class="mono">${r.host ? esc(r.host) : '<span class="muted">任意主机</span>'}</td>
+      <td class="mono">${r.host ? `<span class="badge-host" title="只对 ${esc(r.host)} 生效">${esc(r.host)}</span>` : '<span class="muted">任意主机</span>'}</td>
       <td class="mono muted">${esc(r.upstream || '')}</td>
       ${anyScoped ? `<td class="nowrap">${r.tunnelId ? '<span class="tag acc" title="只在绑定的那个出口上生效">仅限单出口</span>' : '<span class="muted">全局</span>'}</td>` : ''}
     </tr>`).join('');
@@ -452,9 +452,23 @@ function loadGFrame(el, g, getPanel) {
         + '<button class="btn mini" type="button" data-retry="1">重试</button>'
         + `<a class="sm" href="${esc(url.replace(/&_=\d+$/, ''))}" target="_blank" rel="noopener">在新窗口打开 →</a></div>`;
       el.querySelector('[data-retry]').addEventListener('click', () => loadGFrame(el, g, getPanel));
+      markVia(Date.now() - startedAt);
     }
   };
   const startedAt = Date.now();
+  // 卡片右上角标「走哪条路 + 花了多久」：局域网直连通常 1 秒内，经隧道经常几十秒。
+  const markVia = (ms) => {
+    const via = $('#grafanaVia');
+    if (!via) return;
+    const base = grafanaBase(g);
+    const secs = Math.max(0.1, ms / 1000);
+    const took = secs < 10 ? secs.toFixed(1) + 's' : Math.round(secs) + 's';
+    via.className = 'tag ' + (base.via === 'lan' ? 'ok' : 'info');
+    via.textContent = (base.via === 'lan' ? '局域网直连' : '经公网') + ' · ' + took;
+    via.title = base.via === 'lan'
+      ? '图直接从 ' + base.url + ' 取，没走 Cloudflare 隧道'
+      : '经 Cloudflare 隧道取图（首次通常 40 秒以上）；在 http 下打开本面板并配置「局域网直连」会快很多';
+  };
   // 骨架是绝对定位盖在 iframe 上的：只要 `load` 没触发，图就算已经画出来了也被它挡着。
   // Grafana 的 d-solo 页 `load` 要等所有 bundle 跑完（局域网实测 6–10 秒，走公网更久），
   // 所以 2.2 秒后先把骨架撤掉 —— 图正在画总比"正在连接"盖着好看。
@@ -472,6 +486,7 @@ function loadGFrame(el, g, getPanel) {
     const skel = el.querySelector('.gskel');
     const sk = skel && skel.querySelector('span');
     if (sk) sk.textContent = 'Grafana 已连上，正在画图…';
+    markVia(Date.now() - startedAt);
     if (skel) setTimeout(() => { if (skel.parentNode) skel.parentNode.removeChild(skel); }, 1200);
     done(true);
   });

@@ -974,6 +974,13 @@ const EN_PAGES = {
 };
 
 // v0.29.7：顶部横幅改成大白话 + 可关闭
+const EN_V02923 = {
+  '一键体检：12 项检查一次跑完': 'Run all checks at once',
+  '重启（域名不变）': 'Restart (hostname kept)',
+  '操作 ⋯': 'Actions ⋯',
+};
+Object.assign(EN, EN_V02923);
+
 const EN_V0297 = {
   '边缘缓存还没预热过，第一个访客要等资源从源站拉一遍。点':
     'The edge cache has never been warmed, so the first visitor waits for assets from origin. Click',

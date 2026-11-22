@@ -98,6 +98,11 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0}
 /* 并排的两张卡不必等高：出口少的时候，左边会被右边的规则表拉出一大块空白 */
 .grid2.top{grid-template-columns:minmax(280px,.85fr) minmax(340px,1.15fr);align-items:start}
 /* 观测页底部：审计日志 + 面板日志并排，别再各占一屏 */
+/* 侧栏「一键体检」快捷入口（和主导航区分：虚线框、淡一档） */
+.nav-quick{display:flex;align-items:center;gap:8px;margin:10px 12px 4px;padding:7px 10px;border:1px dashed var(--line);border-radius:10px;color:var(--dim);font-size:13px;text-decoration:none}
+.nav-quick:hover{color:var(--fg);border-color:var(--acc);background:var(--acc-bg)}
+/* 规则里只对某个域名生效时，主机名做成徽标，别和路径挤在同一行 mono 里 */
+.badge-host{display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:11px;line-height:1.5;padding:1px 6px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);color:var(--dim);white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
 /* 半宽卡里的表头别被压成两个字一行 */
 .grid2.obs-mid .card th{white-space:nowrap}
 .grid2.obs-mid .card td{min-width:0}
