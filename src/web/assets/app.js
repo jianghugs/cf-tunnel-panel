@@ -68,8 +68,34 @@ const CMDS = [
   { t: '代理规则', s: 'rules 规则 分流', h: '/rules' },
   { t: '工具箱', s: 'tools docker 分享 curl cloudflare', h: '/tools' },
   { t: '观测', s: 'observe 访问 日志 统计', h: '/observe' },
+  { t: '监控', s: 'monitor 指标 告警 prometheus grafana', h: '/monitor' },
   { t: '设置', s: 'settings 维护 通知 备份 只读', h: '/settings' },
+  // 动作：不是跳页面，选中就直接做（省掉「先跳过去再点按钮」）
+  { t: '一键体检', s: '体检 自检 selfcheck 检查 排障', h: '/monitor#check', act: 'check' },
+  { t: '重新预热边缘缓存', s: '预热 warm 缓存 cloudflare 资源', h: '', act: 'warm' },
+  { t: '重启全部出口', s: '重启 restart 出口 隧道 cloudflared', h: '', act: 'restartTunnels' },
 ];
+
+/** 命令面板里的「动作项」：直接在面板里执行，不跳页面。返回一句提示。 */
+async function runPaletteAction(act) {
+  if (act === 'check') {
+    // 体检结果要看得见，所以跳到监控页并自动展开/运行
+    location.href = '/monitor#check';
+    return '';
+  }
+  if (act === 'warm') {
+    const r = await api('/api/cf/cache/warm', { method: 'POST', body: {} });
+    return `已预热 ${(r && (r.total || (r.results || []).length)) || 0} 个资源（边缘缓存下一跳就是 HIT）`;
+  }
+  if (act === 'restartTunnels') {
+    const d = await loadState(true);
+    const ids = (d.state.tunnels || []).filter((t) => t.mode === 'token' && t.token).map((t) => t.id);
+    if (!ids.length) return '没有可重启的命名隧道出口';
+    for (const id of ids) await api('/api/tunnels/' + encodeURIComponent(id) + '/restart', { method: 'POST', body: {} });
+    return `已重启 ${ids.length} 个出口`;
+  }
+  return '';
+}
 
 function paletteItems(extra) {
   const q = ($('#palQ') || {}).value;
@@ -83,7 +109,7 @@ function renderPalette(extra, active) {
   const items = paletteItems(extra);
   const box = $('#palList');
   box.innerHTML = items.map((it, i) => `<div class="pal-item${i === active ? ' on' : ''}" data-h="${esc(it.h)}" role="option" aria-selected="${i === active ? 'true' : 'false'}">
-      <span class="ico">${it.h === '/tunnels' ? '🛰' : it.h === '/rules' ? '⑃' : it.h === '/tools' ? '🧰' : it.h === '/observe' ? '📈' : it.h === '/settings' ? '⚙️' : '▦'}</span>
+      <span class="ico">${it.act === 'check' ? '🩺' : it.act === 'warm' ? '♨️' : it.act === 'restartTunnels' ? '↻' : it.h === '/tunnels' ? '🛰' : it.h === '/rules' ? '⑃' : it.h === '/tools' ? '🧰' : it.h === '/observe' ? '📈' : it.h === '/settings' ? '⚙️' : it.h === '/monitor' ? '📊' : '▦'}</span>
       <span class="t">${esc(it.t)}</span><span class="s">${esc(it.s || '')}</span></div>`).join('')
     || '<div class="empty">没有匹配项</div>';
   return items;
@@ -107,10 +133,19 @@ async function openPalette() {
       .concat((d.state.routes || []).map((r) => ({ t: '规则：' + (r.name || r.path), s: (r.path || '') + ' → ' + (r.upstream || ''), h: '/rules' })));
   } catch {}
   renderPalette(extra, active);
-  const go = (i) => {
+  const go = async (i) => {
     const items = paletteItems(extra);
-    if (!items[i]) return;
-    location.href = items[i].h;
+    const it = items[i];
+    if (!it) return;
+    if (it.act) {
+      wrap.remove();
+      try {
+        const msg = await runPaletteAction(it.act);
+        if (msg) toast(msg, 'ok');
+      } catch (e) { toast(e.message || '这个动作没成功'); }
+      return;
+    }
+    location.href = it.h;
   };
   $('#palQ').addEventListener('input', () => { active = 0; renderPalette(extra, active); });
   $('#palQ').addEventListener('keydown', (e) => {
@@ -123,7 +158,9 @@ async function openPalette() {
   wrap.addEventListener('click', (e) => {
     if (e.target === wrap) { wrap.remove(); return; }
     const it = e.target.closest('.pal-item');
-    if (it) location.href = it.dataset.h;
+    if (!it) return;
+    const idx = [...box.children].indexOf(it);   // 动作项也要走 go()，不能直接跳
+    go(idx >= 0 ? idx : 0);
   });
 }
 

@@ -97,6 +97,13 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px}
 /* 并排的两张卡不必等高：出口少的时候，左边会被右边的规则表拉出一大块空白 */
 .grid2.top{grid-template-columns:minmax(280px,.85fr) minmax(340px,1.15fr);align-items:start}
+/* 观测页底部：审计日志 + 面板日志并排，别再各占一屏 */
+/* 半宽卡里的表头别被压成两个字一行 */
+.grid2.obs-mid .card th{white-space:nowrap}
+.grid2.obs-mid .card td{min-width:0}
+.grid2.obs-mid{align-items:start}
+.grid2.obs-mid > .card{min-width:0}
+@media (max-width:1000px){.grid2.obs-mid{grid-template-columns:1fr}}
 .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
 
@@ -481,7 +488,7 @@ body[data-readonly="1"] .btn.primary[disabled] { cursor: not-allowed; }
 
 /* ---- 日志：默认折叠 6 行、级别色点、时间戳弱化 ---- */
 pre.log{font-size:12px;line-height:1.62}
-pre.log.collapsed{max-height:126px;overflow:hidden}
+pre.log.collapsed{max-height:120px;min-height:0;overflow:hidden}   /* 折叠态：别被 min-height:220px 撑着 */
 pre.log span{display:block;white-space:pre-wrap;word-break:break-word}
 pre.log time{color:#7c8798;font-variant-numeric:tabular-nums}
 pre.log .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:middle;background:#6b7280}

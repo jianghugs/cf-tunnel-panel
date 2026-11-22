@@ -99,6 +99,12 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     }
     chk('总览: 有按规则流量卡', !!doc.querySelector('#pathBox'), '');
     // v0.29.22：并排两卡不再强制等高（左边出口少时会被拉出大片空白）
+    // v0.29.23：规则全是「全局」时，作用域整列收掉（6 行一样的标签是噪音）
+    {
+      const ths = [...doc.querySelectorAll('#ruleMini thead th')].map((t) => t.textContent.trim());
+      const anyScoped = /仅限单出口/.test(doc.querySelector('#ruleMini').innerHTML);
+      chk('总览: 无单出口规则时不显示作用域列', anyScoped ? ths.includes('作用域') : !ths.includes('作用域'), ths.join('/'));
+    }
     chk('总览: 并排卡按内容高度（align-items:start）',
       /start/.test(win.getComputedStyle(doc.querySelector('.grid2.top')).alignItems || ''), '');
     // v0.29.21：规则迷你表要带「主机」列（两条 / 规则靠主机区分）
@@ -314,6 +320,9 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     }
     const pz = doc.querySelector('#btnLogPause');
     chk('观测: 有暂停按钮', !!pz, '');
+    // v0.29.23：审计日志与面板日志并排、面板日志默认折叠（整页 2170px 太长了）
+    chk('观测: 可疑访问与规则命中并排', !!doc.querySelector('.grid2.obs-mid'), '');
+    chk('观测: 面板日志默认折叠', !!doc.querySelector('#logBox.collapsed'), '');
     if (pz) {
       pz.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
       chk('观测: 暂停后按钮变「继续」', /继续/.test(pz.textContent) && pz.getAttribute('aria-pressed') === 'true', pz.textContent);
@@ -350,6 +359,11 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
       q.value = '设置';
       q.dispatchEvent(new win.Event('input', { bubbles: true }));
       chk('概览: 命令面板可按关键字过滤', /设置/.test(doc.querySelector('#palList').textContent), '');
+      // v0.29.23：面板里有「动作项」（一键体检 / 重新预热），选中就执行，不跳页面
+      q.value = '';
+      q.dispatchEvent(new win.Event('input', { bubbles: true }));
+      const palTxt = doc.querySelector('#palList').textContent;
+      chk('概览: 命令面板含动作项', /一键体检/.test(palTxt) && /重新预热/.test(palTxt), palTxt.slice(0, 80));
       doc.body.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
     }
     chk('概览: 无脚本错误', errors.length === 0, errors.join(' | ').slice(0, 160));

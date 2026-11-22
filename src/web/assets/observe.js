@@ -343,7 +343,29 @@ document.addEventListener('click', async (e) => {
     clearTimeout(auditTimer);
     auditTimer = setTimeout(() => { auditPage = 1; loadAudit().catch(() => {}); }, 300);
   });
-  openLogStream(appendLog);
+  // 面板日志默认折叠（流式日志一展开就是一屏），按钮管展开/收起
+  const setLogOpen = (on) => {
+    const box = $('#logBox'); const b = $('#btnLogToggle2');
+    if (box) box.classList.toggle('collapsed', !on);
+    if (b) { b.textContent = on ? '收起' : '展开'; b.setAttribute('aria-expanded', String(on)); }
+  };
+  if ($('#btnLogToggle2')) {
+    setLogOpen(false);
+    $('#btnLogToggle2').addEventListener('click', () => {
+      setLogOpen($('#logBox').classList.contains('collapsed'));
+    });
+  }
+  // 日志为空时给一句状态，别留一条黑框（刚打开、或流还没吐数据）
+  const logHint = () => {
+    const box = $('#logBox');
+    if (box && !box.querySelector('span') && !box.textContent.trim()) box.textContent = '正在连接面板日志…';
+  };
+  setTimeout(logHint, 2500);
+  openLogStream((line) => {
+    const box = $('#logBox');
+    if (box && /^正在连接面板日志…$/.test(box.textContent.trim())) box.textContent = '';
+    appendLog(line);
+  });
   cfpEvery(8000, () => {
     if (!$('#accessAuto').checked) return;
     const a = document.activeElement;

@@ -272,6 +272,11 @@ async function load() {
     if ($('#btnCheck')) $('#btnCheck').addEventListener('click', () => runCheck());
     paintLastCheck();
     paintCheckHistory();
+    // /monitor#check：命令面板「一键体检」跳过来时，滚到体检卡并直接跑一次
+    if (location.hash === '#check' && $('#checkCard')) {
+      $('#checkCard').scrollIntoView({ block: 'start', behavior: 'smooth' });
+      if ($('#btnCheck')) runCheck();
+    }
 
     const abx = $('#monAlertBody');
     if (abx) abx.addEventListener('click', async (e) => {
