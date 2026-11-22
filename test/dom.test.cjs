@@ -332,6 +332,8 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     // v0.29.23：审计日志与面板日志并排、面板日志默认折叠（整页 2170px 太长了）
     chk('观测: 可疑访问与规则命中并排', !!doc.querySelector('.grid2.obs-mid'), '');
     chk('观测: 面板日志默认折叠', !!doc.querySelector('#logBox.collapsed'), '');
+    // v0.29.26：来源 IP / 时间范围收进「更多筛选」，默认不占一整行
+    chk('观测: 更多筛选默认收起', !!doc.querySelector('#btnMoreFilters') && doc.querySelector('#accMore').classList.contains('hidden'), '');
     if (pz) {
       pz.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
       chk('观测: 暂停后按钮变「继续」', /继续/.test(pz.textContent) && pz.getAttribute('aria-pressed') === 'true', pz.textContent);
@@ -373,8 +375,13 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
       q.dispatchEvent(new win.Event('input', { bubbles: true }));
       const palTxt = doc.querySelector('#palList').textContent;
       chk('概览: 命令面板含动作项', /一键体检/.test(palTxt) && /重新预热/.test(palTxt), palTxt.slice(0, 80));
+      // v0.29.26：命名出口各自有「重启这一个」的动作项
+      chk('概览: 命令面板可重启单个出口', /重启出口：/.test(palTxt), palTxt.slice(0, 120));
       doc.body.dispatchEvent(new win.MouseEvent('click', { bubbles: true }));
     }
+    // v0.29.26：英文模式下侧栏「一键体检」不能留中文
+    // 中文页面里 t() 本来就原样返回，所以这条要看词典本身（boot.js 注入的 __CFP_DICT）
+    chk('i18n: 一键体检有英文', !!(win.__CFP_DICT && win.__CFP_DICT['一键体检'] === 'Health check'), (win.__CFP_DICT || {})['一键体检'] || 'absent');
     chk('概览: 无脚本错误', errors.length === 0, errors.join(' | ').slice(0, 160));
   }
 

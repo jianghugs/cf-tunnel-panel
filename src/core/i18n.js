@@ -975,6 +975,7 @@ const EN_PAGES = {
 
 // v0.29.7：顶部横幅改成大白话 + 可关闭
 const EN_V02923 = {
+  '一键体检': 'Health check',
   '一键体检：12 项检查一次跑完': 'Run all checks at once',
   '重启（域名不变）': 'Restart (hostname kept)',
   '操作 ⋯': 'Actions ⋯',

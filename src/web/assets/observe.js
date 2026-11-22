@@ -338,6 +338,22 @@ document.addEventListener('click', async (e) => {
   loadSecurity().catch(() => {});
   if ($('#btnRstatRefresh')) $('#btnRstatRefresh').addEventListener('click', () => loadRouteStats().catch((e) => toast(e.message)));
   loadRouteStats().catch(() => {});
+  // 更多筛选（来源 IP / 时间范围）默认收起，1280 宽下四个控件刚好占满一整行
+  const moreBtn = $('#btnMoreFilters');
+  const moreBox = $('#accMore');
+  const paintMore = () => {
+    if (!moreBtn || !moreBox) return;
+    const on = !moreBox.classList.contains('hidden');
+    const used = [$('#accIp').value.trim(), $('#accRange').value !== '0'].filter(Boolean).length;
+    moreBtn.textContent = on ? '收起筛选' : (used ? `更多筛选 · ${used}` : '更多筛选');
+    moreBtn.setAttribute('aria-expanded', String(on));
+  };
+  if (moreBtn && moreBox) {
+    moreBtn.addEventListener('click', () => { moreBox.classList.toggle('hidden'); paintMore(); });
+    $('#accIp').addEventListener('input', paintMore);
+    $('#accRange').addEventListener('change', paintMore);
+    paintMore();
+  }
   let auditTimer = null;
   $('#auditQ').addEventListener('input', () => {
     clearTimeout(auditTimer);

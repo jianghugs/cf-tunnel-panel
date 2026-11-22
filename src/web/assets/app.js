@@ -87,6 +87,11 @@ async function runPaletteAction(act) {
     const r = await api('/api/cf/cache/warm', { method: 'POST', body: {} });
     return `已预热 ${(r && (r.total || (r.results || []).length)) || 0} 个资源（边缘缓存下一跳就是 HIT）`;
   }
+  if (act.indexOf('restart:') === 0) {
+    const id = act.slice(8);
+    await api('/api/tunnels/' + encodeURIComponent(id) + '/restart', { method: 'POST', body: {} });
+    return '已重启这个出口（域名不变）';
+  }
   if (act === 'restartTunnels') {
     const d = await loadState(true);
     const ids = (d.state.tunnels || []).filter((t) => t.mode === 'token' && t.token).map((t) => t.id);
@@ -101,8 +106,9 @@ function paletteItems(extra) {
   const q = ($('#palQ') || {}).value;
   const kw = String(q || '').trim().toLowerCase();
   const all = CMDS.concat(extra || []);
-  if (!kw) return all.slice(0, 12);
-  return all.filter((x) => (x.t + ' ' + (x.s || '')).toLowerCase().includes(kw)).slice(0, 12);
+  // 12 条装不下「页面 + 动作 + 出口 + 单出口重启」了，放宽到 24（列表本身可滚动）
+  if (!kw) return all.slice(0, 24);
+  return all.filter((x) => (x.t + ' ' + (x.s || '')).toLowerCase().includes(kw)).slice(0, 24);
 }
 
 function renderPalette(extra, active) {
@@ -130,6 +136,10 @@ async function openPalette() {
   try {
     const d = await loadState(true);
     extra = (d.state.tunnels || []).map((t) => ({ t: '出口：' + t.name, s: '隧道 ' + t.id, h: '/tunnels' }))
+      // 只给命名隧道加「重启这一个」的动作项：quick 隧道每次重启都换域名，不适合随手点
+      .concat((d.state.tunnels || []).filter((t) => t.mode === 'named').map((t) => ({
+        t: '重启出口：' + t.name, s: '只重启这一个出口（域名不变）', h: '', act: 'restart:' + t.id,
+      })))
       .concat((d.state.routes || []).map((r) => ({ t: '规则：' + (r.name || r.path), s: (r.path || '') + ' → ' + (r.upstream || ''), h: '/rules' })));
   } catch {}
   renderPalette(extra, active);
