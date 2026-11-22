@@ -371,6 +371,10 @@ function grafanaUrl(g, panel) {
   return `${grafanaBase(g).url}/d-solo/${encodeURIComponent(uid)}/${encodeURIComponent(slug)}?${qs.toString()}`;
 }
 
+// 「这次是直连还是过隧道、花了多久」由 loadGFrame 测出来存这里；
+// 5 秒轮询会重绘卡头，不记住的话徽标每轮都会变回「局域网直连」（看不到耗时）。
+let gVia = null;
+
 function paintGrafana(d) {
   const card = $('#grafanaCard');
   const box = $('#grafanaBox');
@@ -388,10 +392,17 @@ function paintGrafana(d) {
   const mixed = location.protocol === 'https:' && /^http:\/\//i.test(String(base.url));
   const via = $('#grafanaVia');
   if (via) {
-    via.className = 'tag' + (base.via === 'lan' ? ' ok' : '');
-    via.textContent = base.via === 'lan' ? '局域网直连' : '';
-    via.classList.toggle('hidden', base.via !== 'lan');
-    via.title = base.via === 'lan' ? ('图直接从 ' + base.url + ' 取，没走 Cloudflare 隧道') : '';
+    if (gVia) {
+      via.className = 'tag ' + gVia.cls;
+      via.textContent = gVia.text;
+      via.title = gVia.title;
+      via.classList.remove('hidden');
+    } else {
+      via.className = 'tag' + (base.via === 'lan' ? ' ok' : '');
+      via.textContent = base.via === 'lan' ? '局域网直连' : '';
+      via.classList.toggle('hidden', base.via !== 'lan');
+      via.title = base.via === 'lan' ? ('图直接从 ' + base.url + ' 取，没走 Cloudflare 隧道') : '';
+    }
   }
   const warn = $('#grafanaWarn');
   if (warn) {
@@ -457,22 +468,29 @@ function loadGFrame(el, g, getPanel) {
   };
   const startedAt = Date.now();
   // 卡片右上角标「走哪条路 + 花了多久」：局域网直连通常 1 秒内，经隧道经常几十秒。
-  const markVia = (ms) => {
+  const markVia = (ms, doing) => {
     const via = $('#grafanaVia');
     if (!via) return;
     const base = grafanaBase(g);
     const secs = Math.max(0.1, ms / 1000);
     const took = secs < 10 ? secs.toFixed(1) + 's' : Math.round(secs) + 's';
-    via.className = 'tag ' + (base.via === 'lan' ? 'ok' : 'info');
-    via.textContent = (base.via === 'lan' ? '局域网直连' : '经公网') + ' · ' + took;
-    via.title = base.via === 'lan'
+    const text = (base.via === 'lan' ? '局域网直连' : '经公网') + ' · ' + (doing || took);
+    const title = base.via === 'lan'
       ? '图直接从 ' + base.url + ' 取，没走 Cloudflare 隧道'
       : '经 Cloudflare 隧道取图（首次通常 40 秒以上）；在 http 下打开本面板并配置「局域网直连」会快很多';
+    gVia = { text, cls: base.via === 'lan' ? 'ok' : 'info', title };
+    via.className = 'tag ' + gVia.cls;
+    via.textContent = text;
+    via.title = title;
+    via.classList.remove('hidden');
   };
   // 骨架是绝对定位盖在 iframe 上的：只要 `load` 没触发，图就算已经画出来了也被它挡着。
   // Grafana 的 d-solo 页 `load` 要等所有 bundle 跑完（局域网实测 6–10 秒，走公网更久），
   // 所以 2.2 秒后先把骨架撤掉 —— 图正在画总比"正在连接"盖着好看。
-  const reveal = () => { const sk = el.querySelector('.gskel'); if (sk && sk.parentNode) sk.parentNode.removeChild(sk); };
+  const reveal = () => {
+    const sk = el.querySelector('.gskel'); if (sk && sk.parentNode) sk.parentNode.removeChild(sk);
+    if (el.dataset.state === 'loading') markVia(Date.now() - startedAt, '画图中…');
+  };
   const revealTimer = setTimeout(reveal, 2200);
   f.addEventListener('load', () => {
     clearTimeout(revealTimer);
