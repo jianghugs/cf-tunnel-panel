@@ -1144,6 +1144,30 @@ try {
   const st = await j('/api/state');
   ok('体检：/api/state 带体检摘要（侧栏直接用）', st.d.runtime && st.d.runtime.selfcheck && typeof st.d.runtime.selfcheck.total === 'number', '');
 
+  // v0.29.31：?only=bad 方便 cron / 外部脚本只看有问题的项
+  const badOnly = await j('/api/selfcheck?only=bad');
+  ok('体检：only=bad 只返回非 ok 项',
+    badOnly.status === 200 && Array.isArray(badOnly.d.checks)
+    && badOnly.d.checks.every((c) => c.status !== 'ok')
+    && badOnly.d.shown === badOnly.d.checks.length
+    && typeof badOnly.d.total === 'number',
+    `shown=${badOnly.d && badOnly.d.shown} of total=${badOnly.d && badOnly.d.total}`);
+
+  // v0.29.31：单独停用一条规则要能在审计里看出来（原来只记「改规则」）
+  {
+    const st0 = await j('/api/state');
+    const src = st0.d.state.routes.map((r) => ({ ...r, basicAuth: { user: (r.basicAuth || {}).user || '', password: '' } }));
+    const mark = '审计探针规则 ' + Date.now();
+    const one = src[0];
+    const off = src.map((r) => (r.id === one.id ? { ...r, enabled: false } : r));
+    const r1 = await j('/api/routes', { method: 'POST', body: { routes: off, force: true } });
+    const au = await j('/api/audit?limit=20');
+    const hit = (au.d.items || au.d.rows || []).find((x) => x.action === '停用规则' || x.action === '启用规则');
+    ok('审计：停用规则单独记一条', r1.status === 200 && !!hit, hit ? `${hit.action} → ${hit.target}` : JSON.stringify((au.d.items || []).slice(0, 3)));
+    await j('/api/routes', { method: 'POST', body: { routes: src, force: true } });
+    void mark;
+  }
+
   // v0.29.16：网络重连（cloudflared 自己重连、进程没退出）以前完全看不见，只有翻 docker logs 才知道
   ok('体检：包含「出口链路稳定性」一项', (sc.d.checks || []).some((c) => c.id === 'flaps'), (sc.d.checks || []).map((c) => c.id).join(','));
   const anyExit = (st.d.runtime.tunnels || [])[0] || {};

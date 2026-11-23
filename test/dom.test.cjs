@@ -773,6 +773,19 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     chk('体检历史: 小格有样式', /\.sbar\{/.test(css3) && /sbar\[data-s="fail"\]/.test(css3), '');
   }
 
+  {
+    // 体检历史：没失败也要留一句话，而不是整块消失
+    const { doc: dm, win: wm } = await open('/monitor', 1200);
+    let shown = false;
+    for (let i = 0; i < 40 && !shown; i++) {
+      const box = dm.querySelector('#checkFails');
+      if (box && !box.hidden) shown = true; else await sleep(150);
+    }
+    const box2 = dm.querySelector('#checkFails');
+    chk('体检历史: 无失败时也显示说明', shown && /没有失败项|还没攒够/.test(box2.textContent), (box2 ? box2.textContent : '').trim().slice(0, 60));
+    wm.close();
+  }
+
   let bad = 0;
   for (const [ok, name, extra] of results) {
     if (!ok) bad++;

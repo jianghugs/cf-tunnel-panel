@@ -169,10 +169,11 @@ function paintCheckFails(r) {
   const hours = (r && r.hours) || 24;
   const runs = (r && r.runs) || 0;
   if (!fails.length) {
-    box.hidden = runs < 2;   // 只跑过一两次就别下结论
+    // 别整块藏掉：藏起来会让人以为没这个功能
+    box.hidden = false;
     box.innerHTML = runs >= 2
       ? `<div class="sub">最近 ${hours} 小时跑了 ${runs} 次体检，没有失败项。</div>`
-      : '';
+      : `<div class="sub">还没攒够体检记录（${runs} 次），跑了两次以上这里会显示哪些项出过问题。</div>`;
     return;
   }
   box.hidden = false;

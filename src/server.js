@@ -493,6 +493,11 @@ async function handler(req, res) {
   // 一键体检：把「哪里不对」一次性查出来（面板/Caddy/出口/Prometheus/Grafana/磁盘）
   if (p === '/api/selfcheck' && req.method === 'GET') {
     const { out } = await runSelfcheckOnce();
+    const only = String(url.searchParams.get('only') || '').toLowerCase();
+    if (only === 'bad') {
+      const bad = (out.checks || []).filter((c) => c.status !== 'ok');
+      return sendJson(res, 200, { ...out, checks: bad, shown: bad.length });
+    }
     return sendJson(res, 200, out);
   }
 
@@ -859,9 +864,19 @@ async function handler(req, res) {
       if (g.blocked && !body.force) {
         return sendJson(res, 409, { ok: false, code: 'GUARD', issues: g.issues, error: g.issues[0].reason, hint: '确认无误就带 force:true 再提交' });
       }
+      const prevEnabled = new Map((state.routes || []).map((r) => [r.id, r.enabled !== false]));
       state.routes = nextRoutes;
       saveState('routes');
       await pushCaddy();
+      const flipped = nextRoutes.filter((r) => prevEnabled.has(r.id) && prevEnabled.get(r.id) !== (r.enabled !== false));
+      if (flipped.length === 1) {
+        const f0 = flipped[0];
+        auditRecord({
+          action: f0.enabled === false ? '停用规则' : '启用规则',
+          target: String(f0.name || f0.path || f0.id),
+          actor: auth.who, ip: clientIpOf(req), method: req.method, path: p, status: 200, ms: 0,
+        });
+      }
       return sendJson(res, 200, { ok: true, routes: state.routes.map(publicRoute), caddy });
     } catch (e) {
       return sendJson(res, 400, { ok: false, error: e.message });
