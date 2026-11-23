@@ -481,10 +481,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (action === 'toggle') {
       syncFromDom();
+      const r0 = rules[i];
       const next = rules.map((x, k) => (k === i ? { ...x, enabled: x.enabled === false } : x));
       try {
         await api('/api/routes', { method: 'POST', body: { routes: next } });
-        toast(next[i].enabled ? '已启用这条规则' : '已停用这条规则（访客不再命中）', 'ok');
+        const back = rules.map((x, k) => (k === i ? { ...x, enabled: r0.enabled !== false } : x));
+        toast(next[i].enabled ? '已启用这条规则' : '已停用这条规则（访客不再命中）', 'ok', {
+          label: '撤销',
+          fn: async () => {
+            try {
+              await api('/api/routes', { method: 'POST', body: { routes: back } });
+              toast('已恢复原来的状态', 'ok');
+              await refresh(true);
+            } catch (err) { toast('撤销失败：' + err.message, 'err'); }
+          },
+        });
         await refresh(true);
       } catch (err) {
         toast('没改成：' + err.message, 'err');

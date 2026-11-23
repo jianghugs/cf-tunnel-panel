@@ -176,14 +176,23 @@ function paintCheckFails(r) {
     return;
   }
   box.hidden = false;
+  // 每条失败项右侧画一排小格：左边最早、右边最近，红格=那次体检这项失败
+  const items = (r.items || []).slice().sort((a, b) => (Date.parse(a.at) || 0) - (Date.parse(b.at) || 0)).slice(-60);
+  const strip = (id) => items.map((it) => {
+    const badList = Array.isArray(it.bad) ? it.bad : [];
+    const hit = badList.some((x) => (x && x.id) === id);
+    const when = String(it.at || '').replace('T', ' ').slice(5, 16);
+    return `<i class="sbar" data-s="${hit ? 'fail' : 'ok'}" title="${esc(when)}${hit ? ' · 这项失败' : ' · 通过'}"></i>`;
+  }).join('');
   const rows = fails.map((f) => {
     const ago = f.lastAt ? Math.max(0, Math.round((Date.now() - Date.parse(f.lastAt)) / 60000)) : null;
     const when = ago === null ? '' : (ago < 60 ? `${ago} 分钟前` : `${Math.round(ago / 60)} 小时前`);
     return `<tr><td>${esc(f.name || f.id)}</td><td class="num">${f.count}</td><td class="sub">${esc(when)}</td>`
+      + `<td class="strip">${strip(f.id)}</td>`
       + `<td class="sub">${esc(String(f.lastDetail || '').slice(0, 80))}</td></tr>`;
   }).join('');
   box.innerHTML = `<div class="tbl-wrap"><table class="tbl compact"><thead><tr>`
-    + `<th>项目</th><th class="num">次数</th><th>最后一次</th><th>说明</th></tr></thead><tbody>${rows}</tbody></table></div>`
+    + `<th>项目</th><th class="num">次数</th><th>最后一次</th><th>最近 ${items.length} 次</th><th>说明</th></tr></thead><tbody>${rows}</tbody></table></div>`
     + `<div class="sub">最近 ${hours} 小时共 ${runs} 次体检里，上面这些项出过问题（次数多的优先修）。</div>`;
 }
 

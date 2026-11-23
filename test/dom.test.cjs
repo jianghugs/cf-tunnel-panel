@@ -760,6 +760,19 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     chk('体检导出: 含版本/实例等元信息', /exportedAt/.test(mjs2) && /imageCode/.test(mjs2) && /instance/.test(mjs2), '');
   }
 
+  {
+    const appjs2 = await (await fetch(BASE + '/assets/app.js')).text();
+    chk('提示条: 支持撤销按钮', /function toast\(msg, kind = '', action = null\)/.test(appjs2) && /action\.label/.test(appjs2), '');
+    const rjs3 = await (await fetch(BASE + '/assets/rules.js')).text();
+    chk('停用规则: 提示里带撤销', /label: '撤销'/.test(rjs3) && /已恢复原来的状态/.test(rjs3), '');
+    const ojs2 = await (await fetch(BASE + '/assets/observe.js')).text();
+    chk('观测页: 只看5xx 空态可一键关掉', /data-only5xx/.test(ojs2) && /关掉「只看 5xx」/.test(ojs2), '');
+    const mjs3 = await (await fetch(BASE + '/assets/monitor.js')).text();
+    chk('体检历史: 每项带失败趋势小格', /class="sbar"/.test(mjs3) && /data-s="\$\{hit \? 'fail' : 'ok'\}"/.test(mjs3), '');
+    const css3 = await (await fetch(BASE + '/assets/app.css')).text();
+    chk('体检历史: 小格有样式', /\.sbar\{/.test(css3) && /sbar\[data-s="fail"\]/.test(css3), '');
+  }
+
   let bad = 0;
   for (const [ok, name, extra] of results) {
     if (!ok) bad++;

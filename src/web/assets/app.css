@@ -617,5 +617,8 @@ pre.log .lv-inf .dot{background:var(--acc)}
 .sc-hist .bar:hover{outline:1px solid var(--acc);outline-offset:1px}
 .sc-hist-wrap .sub{margin-top:6px}
 .sc-fails{margin-top:10px}
+.sc-fails .strip{white-space:nowrap;line-height:0}
+.sbar{display:inline-block;width:5px;height:15px;margin-right:2px;border-radius:2px;background:rgba(16,185,129,.55)}
+.sbar[data-s="fail"]{background:rgba(239,68,68,.85)}
 .sc-fails .tbl{font-size:12px}
 .sc-fails .tbl td,.sc-fails .tbl th{padding:4px 8px}

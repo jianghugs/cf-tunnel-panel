@@ -46,7 +46,7 @@ function showReadonly(msg) {
 }
 
 /* ---------------- Toast ---------------- */
-function toast(msg, kind = '') {
+function toast(msg, kind = '', action = null) {
   let box = $('#toast');
   if (!box) {
     box = document.createElement('div');
@@ -56,9 +56,21 @@ function toast(msg, kind = '') {
   const el = document.createElement('div');
   el.className = 't ' + kind;
   el.textContent = t(msg);
+  // 第三参给 {label, fn} 时就多一个按钮：误操作能当场撤回，不用再翻菜单
+  if (action && action.label && typeof action.fn === 'function') {
+    const b = document.createElement('button');
+    b.className = 'sm ghost';
+    b.style.marginLeft = '10px';
+    b.textContent = action.label;
+    b.addEventListener('click', () => {
+      try { action.fn(); } finally { el.remove(); }
+    });
+    el.appendChild(b);
+  }
   box.appendChild(el);
-  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .2s'; }, 2600);
-  setTimeout(() => el.remove(), 2900);
+  const life = action ? 6000 : 2600;
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .2s'; }, life);
+  setTimeout(() => el.remove(), life + 300);
 }
 
 /* ---------------- Ctrl+K 命令面板 ---------------- */

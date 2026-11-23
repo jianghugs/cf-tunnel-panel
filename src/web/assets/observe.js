@@ -75,7 +75,9 @@ function renderAccess() {
     </div>
     <div class="tbl-wrap">
       <table class="stackable"><thead><tr><th>时间</th><th>方法</th><th>路径</th><th>状态</th><th>耗时</th><th>来源 IP</th></tr></thead>
-      <tbody>${body || `<tr><td colspan="6" class="muted">${filtering ? '这组筛选条件下没有请求' : '这段时间还没有流量'}</td></tr>`}</tbody></table>
+      <tbody>${body || `<tr><td colspan="6" class="muted">${only5xx
+        ? '最近这段时间没有 5xx。<a href="#" data-only5xx="0">关掉「只看 5xx」</a>看看全部请求。'
+        : (filtering ? '这组筛选条件下没有请求' : '这段时间还没有流量')}</td></tr>`}</tbody></table>
     </div>
     ${pagerHtml(page, pages, list.length)}`;
   bindPager(box, (p) => { page = p; renderAccess(); });
@@ -215,6 +217,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   const bodyEl = document.querySelector('#accessBody');
   if (bodyEl) bodyEl.addEventListener('click', (e) => {
+    const off5 = e.target.closest && e.target.closest('a[data-only5xx]');
+    if (off5) {
+      e.preventDefault();
+      only5xx = false;
+      try { localStorage.setItem('cfp-only5xx', '0'); } catch (err) {}
+      const bb = $('#btnOnly5xx');
+      if (bb) { bb.setAttribute('aria-pressed', 'false'); bb.classList.remove('on'); bb.textContent = '只看 5xx'; }
+      page = 1;
+      renderAccess();
+      return;
+    }
     const a = e.target.closest && e.target.closest('a[data-ip]');
     if (!a) return;
     e.preventDefault();
