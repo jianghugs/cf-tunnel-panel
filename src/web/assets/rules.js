@@ -63,9 +63,14 @@ function ruleHtml(r, i) {
       <div class="right row">
         <button class="sm ghost" data-act="up" title="上移">↑</button>
         <button class="sm ghost" data-act="down" title="下移">↓</button>
-        <button class="sm ghost" data-act="test" title="测上游连通性">测</button>
-        <button class="sm ghost" data-act="dup" title="复制这条规则（插在它后面）">复制</button>
-        <button class="sm ghost" data-act="exp" title="导出这条规则">导出</button>
+        <div class="menu">
+          <button class="sm ghost" data-menu="1" aria-haspopup="true" aria-expanded="false" title="测上游 / 复制 / 导出">操作 ⋯</button>
+          <div class="menu-pop hidden">
+            <button type="button" data-act="test">测上游连通性</button>
+            <button type="button" data-act="dup">复制这条规则</button>
+            <button type="button" data-act="exp">导出这条规则</button>
+          </div>
+        </div>
         <button class="sm danger" data-act="del" title="删除">删</button>
       </div>
     </div>
@@ -423,6 +428,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   $('#ruleList').addEventListener('click', async (e) => {
+    const mb = e.target.closest('[data-menu]');
+    if (mb) {
+      const pop = mb.parentNode.querySelector('.menu-pop');
+      const open = !pop.classList.contains('hidden');
+      pop.classList.toggle('hidden', open);
+      mb.setAttribute('aria-expanded', String(!open));
+      return;
+    }
     const b = e.target.closest('[data-act]');
     if (!b) return;
     const card = b.closest('.rule');

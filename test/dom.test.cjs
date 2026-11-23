@@ -127,6 +127,14 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
       await pollTick(rwin, 1);
       chk('规则页: 轮询重绘后焦点标记仍在', !!rd.querySelector('.rule[data-focused]'), String(!!rd.querySelector('.rule[data-focused]')));
       // v0.29.24：只对某域名生效的规则，主机名单独做徽标
+      // v0.29.27：规则卡也收口了 —— 「测 / 复制 / 导出」进「操作 ⋯」，只留 ↑↓ 和「删」
+      {
+        const card = rd.querySelector('.rule');
+        const outside = card ? [...card.querySelectorAll('[data-act]')].filter((b) => !b.closest('.menu-pop')).map((b) => b.dataset.act) : [];
+        chk('规则页: 测试/复制/导出已收进 ⋯ 菜单',
+          !card || (!!card.querySelector('.menu-pop [data-act="test"]') && !outside.includes('test') && !outside.includes('dup') && !outside.includes('exp')),
+          outside.join(','));
+      }
       chk('规则页: 主机名用徽标显示', !rd.querySelector('.rule') || !!rd.querySelector('.rule .badge-host') || !rd.querySelector('[data-k="host"]'), '');
       chk('规则页: focus 页面无脚本错误', rErrs.length === 0, rErrs.join(' | ').slice(0, 160));
       chk('规则页: 每条规则有命中统计徽标', rd.querySelectorAll('#ruleList [data-hits]').length > 0,

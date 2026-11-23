@@ -159,8 +159,14 @@ async function runChecks(state, ctx = {}) {
       .map((t) => ({ name: t.name || t.id, rt: (runtime.tunnels || {})[t.id] }))
       .filter((x) => x.rt && x.rt.status === 'running');
     if (!running.length) return { status: 'ok', detail: '没有在运行的出口' };
-    const total = running.reduce((n, x) => n + (x.rt.flaps10m || 0), 0);
-    const worst = running.slice().sort((a2, b2) => (b2.rt.flaps10m || 0) - (a2.rt.flaps10m || 0))[0];
+    // 刚启动/刚重启的出口一定会重连一次，那是启动过程不是链路抖动
+    const fresh = running.filter((x) => x.rt.startedAt && Date.now() - x.rt.startedAt < 60000);
+    if (fresh.length === running.length) {
+      return { status: 'ok', detail: `出口刚启动不到 1 分钟（${fresh.map((x) => x.name).join('、')}），先不判定链路稳定性` };
+    }
+    const steady = running.filter((x) => !fresh.includes(x));
+    const total = steady.reduce((n, x) => n + (x.rt.flaps10m || 0), 0);
+    const worst = steady.slice().sort((a2, b2) => (b2.rt.flaps10m || 0) - (a2.rt.flaps10m || 0))[0];
     if (total >= 3) {
       return {
         status: 'warn',

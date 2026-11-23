@@ -108,6 +108,8 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0}
 .grid2.obs-mid .card td{min-width:0}
 .filters-more{display:inline-flex;gap:8px;align-items:center}
 @media (max-width:900px){.filters-more{display:flex;width:100%;flex-wrap:wrap}}
+/* 观测页访问表在手机上本来就一行变一卡，方法/IP 属于「知道了也没用」的两行 */
+@media (max-width:720px){table.stackable td.sm-hide{display:none}}
 @media (pointer:coarse){
   /* 手机上没法拖：把上移/下移做成够大的按钮，拖动把手藏掉 */
   .rule [data-act="up"], .rule [data-act="down"]{min-width:38px;min-height:38px;font-size:15px}
