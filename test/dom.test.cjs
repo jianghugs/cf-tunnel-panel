@@ -703,6 +703,32 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     win9.close();
   }
 
+  {
+    // 规则卡：禁用/启用 进「操作⋯」，并真的带上了 enabled 字段
+    const { doc: dr, win: wr2 } = await open('/rules');
+    const firstRule = dr.querySelector('.rule');
+    const popTxt = firstRule ? firstRule.querySelector('.menu-pop').textContent.replace(/\s+/g, ' ').trim() : '';
+    chk('规则卡: 菜单含禁用/启用', /(禁用|启用)这条规则/.test(popTxt), popTxt.slice(0, 60));
+    const rjs = await (await fetch(BASE + '/assets/rules.js')).text();
+    chk('规则卡: 直接提交整表切换 enabled', /enabled: x\.enabled === false/.test(rjs) && /'\/api\/routes'/.test(rjs), '');
+    wr2.close();
+
+    // 观测页：只看 5xx 一键开关
+    const { doc: dobs, win: wobs } = await open('/observe');
+    const b5 = dobs.querySelector('#btnOnly5xx');
+    chk('观测页: 有「只看 5xx」按钮', !!b5 && b5.getAttribute('aria-pressed') === 'false', b5 ? b5.textContent.trim() : 'missing');
+    if (b5) {
+      b5.click();
+      await sleep(150);
+      chk('观测页: 点一下变成开启状态', b5.getAttribute('aria-pressed') === 'true' && /开/.test(b5.textContent), b5.textContent.trim());
+    }
+    wobs.close();
+
+    // 体检卡：结果可导出 JSON
+    const mjs = await (await fetch(BASE + '/assets/monitor.js')).text();
+    chk('体检卡: 提供导出 JSON', /btnCheckDl/.test(mjs) && /导出本次体检 JSON/.test(mjs), '');
+  }
+
   let bad = 0;
   for (const [ok, name, extra] of results) {
     if (!ok) bad++;

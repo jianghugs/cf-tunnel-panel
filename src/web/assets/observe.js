@@ -5,6 +5,7 @@
 let rows = [];
 let summary = null;
 let page = 1;
+let only5xx = false;
 let logEl = null;
 let paused = false;
 let auditRows = [];
@@ -26,6 +27,7 @@ function filteredRows() {
       if (Number.isFinite(t) && t < since) return false;
     }
     if (ip && !String(r.ip || '').includes(ip)) return false;
+    if (only5xx && !(r.status >= 500)) return false;
     if (st === 'err' && !(r.status >= 400)) return false;
     if (/^[2-5]$/.test(st) && Math.floor(Number(r.status) / 100) !== Number(st)) return false;
     if (q && !String(r.uri || '').toLowerCase().includes(q)) return false;
@@ -49,7 +51,7 @@ function renderAccess() {
   if (page > pages) page = pages;
   if (page < 1) page = 1;
   const slice = list.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const filtering = !!($('#accStatus').value || ($('#accPath').value || '').trim() || rangeSec());
+  const filtering = !!(only5xx || $('#accStatus').value || ($('#accPath').value || '').trim() || rangeSec());
   syncAccessCsv(list.length);
   const body = slice.map((r) => `<tr>
       <td class="mono" data-label="时间">${esc((r.ts || '').slice(11, 19))}</td>
@@ -194,6 +196,15 @@ document.addEventListener('DOMContentLoaded', () => {
     $(id).addEventListener('change', () => { page = 1; renderAccess(); });
   }
   $('#accPath').addEventListener('input', () => { page = 1; renderAccess(); });
+  const only5 = $('#btnOnly5xx');
+  if (only5) only5.addEventListener('click', () => {
+    only5xx = !only5xx;
+    only5.setAttribute('aria-pressed', only5xx ? 'true' : 'false');
+    only5.classList.toggle('on', only5xx);
+    only5.textContent = only5xx ? '只看 5xx · 开' : '只看 5xx';
+    page = 1;
+    renderAccess();
+  });
   const bodyEl = document.querySelector('#accessBody');
   if (bodyEl) bodyEl.addEventListener('click', (e) => {
     const a = e.target.closest && e.target.closest('a[data-ip]');

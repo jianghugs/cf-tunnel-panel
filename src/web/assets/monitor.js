@@ -78,10 +78,13 @@ function slotLink(instance) {
 
 const CHECK_LABEL = { ok: ['通过', 'ok'], warn: ['注意', 'warn'], fail: ['失败', 'err'] };
 
+let lastCheckData = null;
+
 function renderCheck(r) {
   const box = $('#checkBody');
   if (!box) return;
   if (!r || !r.checks || !r.checks.length) { box.innerHTML = '<div class="empty">没拿到体检结果</div>'; return; }
+  lastCheckData = r;
   const head = r.fail
     ? `<div class="hint banner" style="margin-bottom:12px"><span class="bico">!</span><div class="msg">${r.fail} 项失败、${r.warn} 项需要注意（共 ${r.total} 项）</div></div>`
     : `<div class="muted" style="margin-bottom:12px">${r.total} 项全部通过${r.warn ? `，其中 ${r.warn} 项值得留意` : ''}</div>`;
@@ -97,7 +100,8 @@ function renderCheck(r) {
   }).join('');
   box.innerHTML = head + `<div class="tbl-wrap"><table class="tbl">
     <thead><tr><th>状态</th><th>项目</th><th>结果</th><th>怎么办</th><th>耗时</th></tr></thead>
-    <tbody>${rows}</tbody></table></div>`;
+    <tbody>${rows}</tbody></table></div>
+    <div class="row" style="margin-top:10px"><button class="sm ghost" id="btnCheckDl">导出本次体检 JSON</button></div>`;
 }
 
 /** 页面打开时先把「上次（定时）体检」的结果亮出来，不用非点按钮 */
@@ -270,6 +274,18 @@ async function load() {
     load().catch((e) => toast(e.message, 'err'));
     if ($('#btnMonRefresh')) $('#btnMonRefresh').addEventListener('click', () => load().catch((e) => toast(e.message, 'err')));
     if ($('#btnCheck')) $('#btnCheck').addEventListener('click', () => runCheck());
+    const cbody = $('#checkBody');
+    if (cbody) cbody.addEventListener('click', (e) => {
+      const hit = e.target.closest && e.target.closest('#btnCheckDl');
+      if (!hit || !lastCheckData) return;
+      const blob = new Blob([JSON.stringify(lastCheckData, null, 2)], { type: 'application/json' });
+      const a2 = document.createElement('a');
+      a2.href = URL.createObjectURL(blob);
+      a2.download = 'selfcheck-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+      a2.click();
+      setTimeout(() => URL.revokeObjectURL(a2.href), 3000);
+      toast('已导出这次体检的结果', 'ok');
+    });
     paintLastCheck();
     paintCheckHistory();
     // /monitor#check：命令面板「一键体检」跳过来时，滚到体检卡并直接跑一次

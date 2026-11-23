@@ -22,6 +22,7 @@
           <option value="err">只看错误（4xx + 5xx）</option>
         </select>
         <input id="accPath" placeholder="路径包含…" style="width:150px" aria-label="按路径筛选" />
+        <button class="sm ghost" id="btnOnly5xx" aria-pressed="false" title="只显示状态码 ≥500 的请求">只看 5xx</button>
         <button class="sm ghost" id="btnMoreFilters" aria-expanded="false" aria-controls="accMore">更多筛选</button>
         <span class="filters-more hidden" id="accMore">
         <input id="accIp" placeholder="来源 IP…" style="width:130px" aria-label="按来源 IP 筛选" />

@@ -69,6 +69,7 @@ function ruleHtml(r, i) {
             <button type="button" data-act="test">测上游连通性</button>
             <button type="button" data-act="dup">复制这条规则</button>
             <button type="button" data-act="exp">导出这条规则</button>
+            <button type="button" data-act="toggle">${r.enabled !== false ? '禁用这条规则' : '启用这条规则'}</button>
           </div>
         </div>
         <button class="sm danger" data-act="del" title="删除">删</button>
@@ -474,6 +475,18 @@ document.addEventListener('DOMContentLoaded', () => {
       syncFromDom();
       const r = { ...rules[i], basicAuth: { user: (rules[i].basicAuth || {}).user || '', password: '' } };
       copyText(JSON.stringify(r, null, 2));
+      return;
+    }
+    if (action === 'toggle') {
+      syncFromDom();
+      const next = rules.map((x, k) => (k === i ? { ...x, enabled: x.enabled === false } : x));
+      try {
+        await api('/api/routes', { method: 'POST', body: { routes: next } });
+        toast(next[i].enabled ? '已启用这条规则' : '已停用这条规则（访客不再命中）', 'ok');
+        await refresh(true);
+      } catch (err) {
+        toast('没改成：' + err.message, 'err');
+      }
       return;
     }
     if (action === 'test') {
