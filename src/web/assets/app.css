@@ -227,6 +227,8 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
 
 /* ---------------- 规则卡 ---------------- */
 .rule{border:1px solid var(--line);border-radius:10px;margin-bottom:10px;background:var(--panel)}
+.rule.off{opacity:.66}
+.rule.off .tag.mono,.rule.off .badge-host{text-decoration:line-through}
 .rule-h{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
 .rule-h .idx{font-size:11px;color:var(--dim);min-width:20px}
 .rule-b{padding:12px;display:flex;flex-direction:column;gap:10px}

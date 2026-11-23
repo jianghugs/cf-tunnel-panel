@@ -729,6 +729,37 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     chk('体检卡: 提供导出 JSON', /btnCheckDl/.test(mjs) && /导出本次体检 JSON/.test(mjs), '');
   }
 
+  {
+    // 停用的规则要看得出来
+    const rjs2 = await (await fetch(BASE + '/assets/rules.js')).text();
+    chk('规则卡: 停用态有标记与灰显', /const off = r\.enabled === false/.test(rjs2) && /' off'/.test(rjs2) && /已停用/.test(rjs2), '');
+    const css2 = await (await fetch(BASE + '/assets/app.css')).text();
+    chk('规则卡: 停用有样式', /\.rule\.off\{opacity/.test(css2), '');
+
+    // 只看 5xx 记住状态
+    const { doc: d5, win: w5 } = await open('/observe');
+    const b52 = d5.querySelector('#btnOnly5xx');
+    if (b52) {
+      b52.click();
+      await sleep(120);
+      chk('观测页: 开关写入 localStorage', w5.localStorage.getItem('cfp-only5xx') === '1', String(w5.localStorage.getItem('cfp-only5xx')));
+    } else chk('观测页: 开关写入 localStorage', false, 'button missing');
+    // jsdom 每次 open() 都是新的 localStorage，跨页面「刷新」没法直接测；
+    // 改成核对「启动时会读回这个键」+ 同页再点一下能回到关闭态
+    const ojs = await (await fetch(BASE + '/assets/observe.js')).text();
+    chk('观测页: 启动时读回开关状态', /localStorage\.getItem\('cfp-only5xx'\) === '1'/.test(ojs), '');
+    if (b52) {
+      b52.click();
+      await sleep(120);
+      chk('观测页: 再点一下恢复关闭并写回 0', b52.getAttribute('aria-pressed') === 'false' && w5.localStorage.getItem('cfp-only5xx') === '0', b52.textContent.trim());
+    }
+    w5.close();
+
+    // 体检 JSON 带机器信息
+    const mjs2 = await (await fetch(BASE + '/assets/monitor.js')).text();
+    chk('体检导出: 含版本/实例等元信息', /exportedAt/.test(mjs2) && /imageCode/.test(mjs2) && /instance/.test(mjs2), '');
+  }
+
   let bad = 0;
   for (const [ok, name, extra] of results) {
     if (!ok) bad++;

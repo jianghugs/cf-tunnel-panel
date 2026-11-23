@@ -50,12 +50,14 @@ function upDot(url) {
 function ruleHtml(r, i) {
   const scoped = !!r.tunnelId;
   const auth = r.basicAuth || {};
-  return `<div class="rule" data-i="${i}" draggable="true">
+  const off = r.enabled === false;
+  return `<div class="rule${off ? ' off' : ''}" data-i="${i}" draggable="true">
     <div class="rule-h">
       <span class="drag" title="按住拖动可以调整顺序（顺序就是优先级：上面的先命中）" aria-label="拖动排序">⠿</span>
       <span class="idx">${i + 1}</span>
       <input data-k="name" value="${esc(r.name || '')}" placeholder="规则名字（可留空）" style="max-width:200px" />
       <span class="tag ${scoped ? 'acc' : ''}">${scoped ? '专属' : '全局'}</span>
+      ${off ? '<span class="tag warn" title="这条规则已停用，访客不会命中，但它还留在列表里">已停用</span>' : ''}
       <span class="tag mono">${esc(r.path || '/')}</span>
       ${r.host ? `<span class="badge-host" title="只对 ${esc(r.host)} 生效">${esc(r.host)}</span>` : ''}
       <span class="mono muted" style="font-size:11.5px">→ ${esc(r.upstream || '未填上游')}${upDot(r.upstream)}</span>

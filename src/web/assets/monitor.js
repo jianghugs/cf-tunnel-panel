@@ -275,10 +275,19 @@ async function load() {
     if ($('#btnMonRefresh')) $('#btnMonRefresh').addEventListener('click', () => load().catch((e) => toast(e.message, 'err')));
     if ($('#btnCheck')) $('#btnCheck').addEventListener('click', () => runCheck());
     const cbody = $('#checkBody');
-    if (cbody) cbody.addEventListener('click', (e) => {
+    if (cbody) cbody.addEventListener('click', async (e) => {
       const hit = e.target.closest && e.target.closest('#btnCheckDl');
       if (!hit || !lastCheckData) return;
-      const blob = new Blob([JSON.stringify(lastCheckData, null, 2)], { type: 'application/json' });
+      const meta = await fetch('/healthz').then((r2) => r2.json()).catch(() => ({}));
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        panel: {
+          version: meta.version || '', code: meta.code || '', imageCode: meta.imageCode || '',
+          mode: meta.mode || '', instance: meta.instance || '', drift: meta.drift,
+        },
+        result: lastCheckData,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const a2 = document.createElement('a');
       a2.href = URL.createObjectURL(blob);
       a2.download = 'selfcheck-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';

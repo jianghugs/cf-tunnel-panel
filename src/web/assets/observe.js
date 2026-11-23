@@ -197,11 +197,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   $('#accPath').addEventListener('input', () => { page = 1; renderAccess(); });
   const only5 = $('#btnOnly5xx');
-  if (only5) only5.addEventListener('click', () => {
-    only5xx = !only5xx;
+  const paintOnly5 = () => {
+    if (!only5) return;
     only5.setAttribute('aria-pressed', only5xx ? 'true' : 'false');
     only5.classList.toggle('on', only5xx);
     only5.textContent = only5xx ? '只看 5xx · 开' : '只看 5xx';
+  };
+  // 刷新页面后保留「只看 5xx」——排查错误时最常按的那一下不该每次重来
+  try { only5xx = localStorage.getItem('cfp-only5xx') === '1'; } catch (e) { only5xx = false; }
+  paintOnly5();
+  if (only5) only5.addEventListener('click', () => {
+    only5xx = !only5xx;
+    try { localStorage.setItem('cfp-only5xx', only5xx ? '1' : '0'); } catch (e) {}
+    paintOnly5();
     page = 1;
     renderAccess();
   });
