@@ -128,7 +128,7 @@ function histTip(h) {
   const p2 = (x) => String(x).padStart(2, '0');
   const hm = `${p2(t.getMonth() + 1)}-${p2(t.getDate())} ${p2(t.getHours())}:${p2(t.getMinutes())}`;
   const bad = (h.bad || []).map((b) => b.name).filter(Boolean);
-  return `${hm} · ${h.total - h.fail}/${h.total} 通过`
+  return `${hm} · ${h.scope === 'quick' ? '快速 · ' : ''}${h.total - h.fail}/${h.total} 通过`
     + (h.warn ? ` · ${h.warn} 项警告` : '')
     + (bad.length ? `\n失败：${bad.join('、')}` : '');
 }
@@ -148,10 +148,13 @@ async function paintCheckHistory() {
   if (!items.length) { wrap.hidden = true; return; }
   wrap.hidden = false;
   const dropped = !!(store && store.count >= store.keep);
-  box.innerHTML = (dropped ? `<i class="bar drop" title="更早的记录已被丢弃（只保留最近 ${store.keep} 次）"></i>` : '')
+  box.innerHTML = (dropped
+    ? `<button type="button" class="bar drop" data-note="1" title="更早的记录已被丢弃（只保留最近 ${store.keep} 次）—— 点一下看说明" aria-label="更早的体检记录已被丢弃"></button>`
+    : '')
     + items.slice().reverse().map((h) => {                       // 左旧右新
     const state = h.fail ? 'fail' : (h.warn ? 'warn' : 'ok');
-    return `<i class="bar" data-s="${state}" title="${esc(histTip(h))}"></i>`;
+    const q = h.scope === 'quick' ? ' data-q="1"' : '';
+    return `<i class="bar" data-s="${state}"${q} title="${esc(histTip(h))}"></i>`;
   }).join('');
   const last = items[0];
   const mins = Math.max(0, Math.round((Date.now() - Number(last.at || 0)) / 60000));
@@ -219,6 +222,7 @@ async function runCheck() {
   if (box) box.innerHTML = '<div class="empty">正在查（每个依赖最多等 3 秒）…</div>';
   try {
     const sc = ($('#checkScope') || {}).value || 'all';
+    try { localStorage.setItem('cfp-checkScope', sc); } catch (e) {}
     const r = await api('/api/selfcheck' + (sc === 'quick' ? '?scope=quick' : ''));
     renderCheck(r);
   paintCheckHistory();
@@ -300,6 +304,18 @@ async function load() {
     load().catch((e) => toast(e.message, 'err'));
     if ($('#btnMonRefresh')) $('#btnMonRefresh').addEventListener('click', () => load().catch((e) => toast(e.message, 'err')));
     if ($('#btnCheck')) $('#btnCheck').addEventListener('click', () => runCheck());
+    // 体检范围记一下：常点「快速」的人不用每次重选
+    const scSel = $('#checkScope');
+    if (scSel) {
+      try { const v = localStorage.getItem('cfp-checkScope'); if (v === 'quick' || v === 'all') scSel.value = v; } catch (e) {}
+      scSel.addEventListener('change', () => { try { localStorage.setItem('cfp-checkScope', scSel.value); } catch (e) {} });
+    }
+    const hbox = $('#checkHist');
+    if (hbox) hbox.addEventListener('click', (e) => {
+      const hit = e.target.closest && e.target.closest('[data-note]');
+      if (!hit) return;
+      toast('留痕只保留最近 300 次体检（约 25 小时）。更早的记录会被丢掉，好在小条上仍能看出「这里之前还有」。', '', null);
+    });
     const cbody = $('#checkBody');
     if (cbody) cbody.addEventListener('click', async (e) => {
       const hit = e.target.closest && e.target.closest('#btnCheckDl');

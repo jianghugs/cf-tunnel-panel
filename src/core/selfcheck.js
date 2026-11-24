@@ -365,11 +365,12 @@ function trimHist() {
   } catch { /* 裁剪失败不影响体检本身 */ }
 }
 
-function persist(result) {
+function persist(result, scope = 'all') {
   try {
     fs.mkdirSync(STORE_DIR, { recursive: true });
     const rec = {
       at: result.checkedAt || Date.now(),
+      scope: scope === 'quick' ? 'quick' : 'all',
       ok: result.ok, fail: result.fail, warn: result.warn, total: result.total,
       bad: (result.checks || []).filter((c) => c.status === 'fail')
         .slice(0, 8)
@@ -419,6 +420,8 @@ function atMs(v) {
 function fails(items, nowMs = Date.now()) {
   const map = new Map();
   for (const h of items || []) {
+    // 只统计全量体检：快速模式跳过出口探测，把它的「失败」混进来会让人以为出口真的挂了
+    if (h && h.scope === 'quick') continue;
     const at = atMs(h && h.at);
     if (!at || at > nowMs) continue;
     for (const b of (h.bad || [])) {

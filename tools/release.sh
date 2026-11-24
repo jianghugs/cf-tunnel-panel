@@ -108,8 +108,19 @@ if [ "$NO_PUSH" -eq 1 ]; then
   step "5/6 跳过 push（--no-push）"
 else
   step "5/6 push"
-  git push -q origin "$BRANCH"
-  git push -q origin "v$VERSION"
+  # GitHub 的 SSH 时而抽风（Connection reset / closed），重试几次比让人手工补推更省事
+  push_retry() {
+    local ref="$1" check="$2" i
+    for i in 1 2 3 4 5 6; do
+      git push -q origin "$ref" 2>/dev/null && :
+      if git ls-remote "$check" 2>/dev/null | grep -q .; then return 0; fi
+      echo "  push 第 $i 次没成功，8 秒后重试…"
+      sleep 8
+    done
+    return 1
+  }
+  push_retry "$BRANCH" "origin" || die "push 分支失败（网络问题？先 git push origin $BRANCH 再重跑本脚本）"
+  push_retry "v$VERSION" "origin" || die "push tag 失败（网络问题？先 git push origin v$VERSION 再重跑本脚本）"
   echo "已 push $BRANCH 与 tag v$VERSION —— release workflow 会自动建 Release 并推 ghcr 镜像"
 fi
 

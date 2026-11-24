@@ -833,6 +833,13 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     chk('体检卡: 留痕写满时标记丢弃', /bar drop/.test(mjs6) && /已被丢弃/.test(mjs6), '');
   }
 
+  {
+    const mjs7 = await (await fetch(BASE + '/assets/monitor.js')).text();
+    chk('体检: 范围选择会被记住', /cfp-checkScope/.test(mjs7), '');
+    chk('体检历史: 快速记录淡显', /data-q/.test(mjs7), '');
+    chk('体检历史: 丢弃标记可点', /data-note/.test(mjs7) && /已被丢弃/.test(mjs7), '');
+  }
+
   let bad = 0;
   for (const [ok, name, extra] of results) {
     if (!ok) bad++;

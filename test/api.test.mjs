@@ -1205,6 +1205,13 @@ try {
     && (qk.d.checks || []).every((c) => !String(c.id).startsWith('exit-')),
     `${(qk.d.checks || []).length} 项：${(qk.d.checks || []).map((c) => c.id).join(',')}`);
 
+  // v0.29.35：快速体检也留痕，但记录带 scope='quick'（聚合统计里排除）
+  const qk2 = await j('/api/selfcheck?scope=quick');
+  const hq = await j('/api/selfcheck/history?limit=5');
+  ok('体检：快速结果带 scope 标记',
+    qk2.status === 200 && (hq.d.items || []).some((x) => x.scope === 'quick'),
+    (hq.d.items || []).map((x) => x.scope || 'all').join(','));
+
   // v0.29.16：网络重连（cloudflared 自己重连、进程没退出）以前完全看不见，只有翻 docker logs 才知道
   ok('体检：包含「出口链路稳定性」一项', (sc.d.checks || []).some((c) => c.id === 'flaps'), (sc.d.checks || []).map((c) => c.id).join(','));
   const anyExit = (st.d.runtime.tunnels || [])[0] || {};

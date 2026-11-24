@@ -508,7 +508,8 @@ async function handler(req, res) {
         return sendJson(res, 400, { ok: false, error: `未知的检查项：${unknown.join('、')}`, valid: _selfcheck.CHECK_IDS });
       }
     }
-    const { out } = await runSelfcheckOnce({ ids });
+    const manualIds = String(url.searchParams.get('ids') || '').trim();
+    const { out } = await runSelfcheckOnce({ ids, scope: (scope === 'quick' && !manualIds) ? 'quick' : '' });
     const only = String(url.searchParams.get('only') || '').toLowerCase();
     if (only === 'bad') {
       const bad = (out.checks || []).filter((c) => c.status !== 'ok');
@@ -2268,12 +2269,14 @@ function selfcheckRecovered(rec) {
 let _selfcheckInflight = null;
 async function runSelfcheckOnce(opts) {
   const ids = (opts && Array.isArray(opts.ids) ? opts.ids : []).filter(Boolean);
-  // 只跑指定项时不走单飞、也不写留痕：半套结果写进历史会让「最近 24 小时」统计失真
+  // 只跑指定项时不走单飞：半套结果一旦混进「最近 24 小时」统计就会失真
+  // （v0.29.35 起：点名「快速」的那一路会落盘，但记录带 scope='quick'，聚合时被排除）
   if (ids.length) {
     maybeReloadState();
     const c2 = selfcheckContext();
     const out2 = await _selfcheck.runChecks(state, { runtime: c2.rt, ...c2.meta }, { ids });
-    return { out: out2, rec: null };
+    const rec2 = (opts && opts.scope === 'quick') ? _selfcheck.persist(out2, 'quick') : null;
+    return { out: out2, rec: rec2 };
   }
   if (_selfcheckInflight) return _selfcheckInflight;
   _selfcheckInflight = (async () => {
