@@ -782,7 +782,8 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
       if (box && !box.hidden) shown = true; else await sleep(150);
     }
     const box2 = dm.querySelector('#checkFails');
-    chk('体检历史: 无失败时也显示说明', shown && /没有失败项|还没攒够/.test(box2.textContent), (box2 ? box2.textContent : '').trim().slice(0, 60));
+    // 线上可能真的有失败项（比如刚重启的出口），所以两种形态都算通过：空态说明 或 聚合表
+    chk('体检历史: 聚合区总有结论（说明或表格）', shown && /没有失败项|还没攒够|项目/.test(box2.textContent), (box2 ? box2.textContent : '').trim().slice(0, 60));
     wm.close();
   }
 
@@ -817,6 +818,19 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     woa.close();
     const mjs5 = await (await fetch(BASE + '/assets/monitor.js')).text();
     chk('体检留痕: 接近上限会提示', /开始丢最早的记录/.test(mjs5) && /leftRuns/.test(mjs5), '');
+  }
+
+  {
+    const { doc: dmc, win: wmc } = await open('/monitor', 1200);
+    const sc2 = dmc.querySelector('#checkScope');
+    chk('体检: 有「全部 / 快速」范围选择', !!sc2 && sc2.querySelectorAll('option').length === 2,
+      sc2 ? [...sc2.options].map((o) => o.value).join(',') : 'missing');
+    wmc.close();
+
+    const obs2 = await (await fetch(BASE + '/assets/observe.js')).text();
+    chk('审计: 「只看失败」会持久化', /cfp-auditFail/.test(obs2), '');
+    const mjs6 = await (await fetch(BASE + '/assets/monitor.js')).text();
+    chk('体检卡: 留痕写满时标记丢弃', /bar drop/.test(mjs6) && /已被丢弃/.test(mjs6), '');
   }
 
   let bad = 0;

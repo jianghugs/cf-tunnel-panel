@@ -163,6 +163,7 @@ function auditQuery() {
   if (date) parts.push('date=' + encodeURIComponent(date));
   if (act) parts.push('act=' + encodeURIComponent(act));
   if (auditOnlyFail) parts.push('bad=1');
+  if (auditOnlyFail) parts.push('bad=1');
   return parts.join('&');
 }
 
@@ -217,11 +218,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const actSel = $('#auditAct');
   if (actSel) actSel.addEventListener('change', () => { auditPage = 1; loadAudit(); });
   const afBtn = $('#btnAuditFail');
-  if (afBtn) afBtn.addEventListener('click', () => {
-    auditOnlyFail = !auditOnlyFail;
+  const paintAuditFail = () => {
+    if (!afBtn) return;
     afBtn.setAttribute('aria-pressed', auditOnlyFail ? 'true' : 'false');
     afBtn.classList.toggle('on', auditOnlyFail);
     afBtn.textContent = auditOnlyFail ? '只看失败 · 开' : '只看失败';
+  };
+  // 和「只看 5xx」一致：刷新后保留，排查失败时不用每次重按
+  try { auditOnlyFail = localStorage.getItem('cfp-auditFail') === '1'; } catch (e) { auditOnlyFail = false; }
+  paintAuditFail();
+  if (afBtn) afBtn.addEventListener('click', () => {
+    auditOnlyFail = !auditOnlyFail;
+    try { localStorage.setItem('cfp-auditFail', auditOnlyFail ? '1' : '0'); } catch (e) {}
+    paintAuditFail();
     auditPage = 1;
     loadAudit();
   });

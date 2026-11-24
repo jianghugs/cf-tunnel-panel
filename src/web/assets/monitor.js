@@ -147,7 +147,9 @@ async function paintCheckHistory() {
   } catch { return; }
   if (!items.length) { wrap.hidden = true; return; }
   wrap.hidden = false;
-  box.innerHTML = items.slice().reverse().map((h) => {           // 左旧右新
+  const dropped = !!(store && store.count >= store.keep);
+  box.innerHTML = (dropped ? `<i class="bar drop" title="更早的记录已被丢弃（只保留最近 ${store.keep} 次）"></i>` : '')
+    + items.slice().reverse().map((h) => {                       // 左旧右新
     const state = h.fail ? 'fail' : (h.warn ? 'warn' : 'ok');
     return `<i class="bar" data-s="${state}" title="${esc(histTip(h))}"></i>`;
   }).join('');
@@ -216,7 +218,8 @@ async function runCheck() {
   const box = $('#checkBody');
   if (box) box.innerHTML = '<div class="empty">正在查（每个依赖最多等 3 秒）…</div>';
   try {
-    const r = await api('/api/selfcheck');
+    const sc = ($('#checkScope') || {}).value || 'all';
+    const r = await api('/api/selfcheck' + (sc === 'quick' ? '?scope=quick' : ''));
     renderCheck(r);
   paintCheckHistory();
     if (r && r.fail) toast(`${r.fail} 项失败`, 'err');

@@ -498,7 +498,10 @@ async function handler(req, res) {
 
   // 一键体检：把「哪里不对」一次性查出来（面板/Caddy/出口/Prometheus/Grafana/磁盘）
   if (p === '/api/selfcheck' && req.method === 'GET') {
-    const ids = String(url.searchParams.get('ids') || '').split(',').map((x) => x.trim()).filter(Boolean);
+    const scope = String(url.searchParams.get('scope') || '').toLowerCase();
+    let ids = String(url.searchParams.get('ids') || '').split(',').map((x) => x.trim()).filter(Boolean);
+    // scope=quick：跳过要过 Cloudflare 的出口探测（只跑静态项），也就不写留痕
+    if (!ids.length && scope === 'quick') ids = _selfcheck.CHECK_IDS.slice();
     if (ids.length) {
       const unknown = ids.filter((x) => !_selfcheck.CHECK_IDS.includes(x) && !/^exit-/.test(x));
       if (unknown.length) {

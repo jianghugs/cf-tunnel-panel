@@ -613,6 +613,7 @@ pre.log .lv-inf .dot{background:var(--acc)}
 .sc-hist .bar{display:block;flex:0 0 9px;height:9px;border-radius:2px;background:var(--line2)}
 .sc-hist .bar[data-s="ok"]{background:var(--ok);height:18px}
 .sc-hist .bar[data-s="warn"]{background:var(--warn);height:13px}
+.sc-hist .bar.drop{width:6px;background:repeating-linear-gradient(45deg,var(--line),var(--line) 2px,transparent 2px,transparent 4px);border-radius:2px}
 .sc-hist .bar[data-s="fail"]{background:var(--err);height:18px}
 .sc-hist .bar:hover{outline:1px solid var(--acc);outline-offset:1px}
 .sc-hist-wrap .sub{margin-top:6px}

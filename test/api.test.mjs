@@ -1198,6 +1198,13 @@ try {
     auBad.status === 200 && (auBad.d.rows || []).every((r) => r.ok === false),
     (auBad.d.rows || []).map((r) => `${r.action}:${r.ok}`).slice(0, 3).join(' '));
 
+  // v0.29.34：scope=quick 跳过要过 Cloudflare 的出口探测
+  const qk = await j('/api/selfcheck?scope=quick');
+  ok('体检：scope=quick 不含出口探测',
+    qk.status === 200 && (qk.d.checks || []).length > 0
+    && (qk.d.checks || []).every((c) => !String(c.id).startsWith('exit-')),
+    `${(qk.d.checks || []).length} 项：${(qk.d.checks || []).map((c) => c.id).join(',')}`);
+
   // v0.29.16：网络重连（cloudflared 自己重连、进程没退出）以前完全看不见，只有翻 docker logs 才知道
   ok('体检：包含「出口链路稳定性」一项', (sc.d.checks || []).some((c) => c.id === 'flaps'), (sc.d.checks || []).map((c) => c.id).join(','));
   const anyExit = (st.d.runtime.tunnels || [])[0] || {};
