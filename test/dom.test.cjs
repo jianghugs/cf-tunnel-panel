@@ -840,6 +840,13 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     chk('体检历史: 丢弃标记可点', /data-note/.test(mjs7) && /已被丢弃/.test(mjs7), '');
   }
 
+  {
+    const mjs8 = await (await fetch(BASE + '/assets/monitor.js')).text();
+    chk('体检卡: 显示全量/快速占比', /全量 \$\{scopes\.all\}/.test(mjs8) && /快速 \$\{scopes\.quick\}/.test(mjs8), '');
+    const sjs2 = await (await fetch(BASE + '/assets/monitor.js')).text();
+    chk('体检卡: scopes 在 try 外声明（避免未定义）', /let scopes = null;/.test(sjs2), '');
+  }
+
   let bad = 0;
   for (const [ok, name, extra] of results) {
     if (!ok) bad++;

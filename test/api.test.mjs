@@ -1212,6 +1212,19 @@ try {
     qk2.status === 200 && (hq.d.items || []).some((x) => x.scope === 'quick'),
     (hq.d.items || []).map((x) => x.scope || 'all').join(','));
 
+  // v0.29.36：历史可只取全量、并给出全量/快速占比；留痕有天数上限
+  const hall = await j('/api/selfcheck/history?limit=50&scope=all');
+  const hany = await j('/api/selfcheck/history?limit=50');
+  ok('体检历史：scope=all 不含快速记录',
+    hall.status === 200 && (hall.d.items || []).every((x) => x.scope !== 'quick')
+    && (hany.d.items || []).some((x) => x.scope === 'quick'),
+    `all=${(hall.d.items || []).length} any=${(hany.d.items || []).length}`);
+  ok('体检历史：给出全量/快速次数',
+    hall.d.scopes && typeof hall.d.scopes.all === 'number' && typeof hall.d.scopes.quick === 'number'
+    && hall.d.scopes.all >= 1,
+    JSON.stringify(hall.d.scopes || {}));
+  ok('留痕：store 带天数上限', !!(hall.d.store && hall.d.store.retainDays >= 1), String(hall.d.store && hall.d.store.retainDays));
+
   // v0.29.16：网络重连（cloudflared 自己重连、进程没退出）以前完全看不见，只有翻 docker logs 才知道
   ok('体检：包含「出口链路稳定性」一项', (sc.d.checks || []).some((c) => c.id === 'flaps'), (sc.d.checks || []).map((c) => c.id).join(','));
   const anyExit = (st.d.runtime.tunnels || [])[0] || {};

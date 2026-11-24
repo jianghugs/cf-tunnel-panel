@@ -316,7 +316,8 @@ async function runChecks(state, ctx = {}, opts = {}) {
 const STORE_DIR = path.join(DATA_DIR, 'selfcheck');
 const LAST_FILE = path.join(STORE_DIR, 'last.json');
 const HIST_FILE = path.join(STORE_DIR, 'history.jsonl');
-const KEEP = 300;   // 每 5 分钟一条 → 300 条约等于 25 小时，够「最近 24 小时」聚合                                       // 历史最多留 200 次
+const KEEP = 300;          // 条数上限：每 5 分钟一条 → 300 条约等于 25 小时，够「最近 24 小时」聚合
+const RETAIN_DAYS = 7;     // 天数上限：跑得少也不该把两个月前的记录留着
 const HIST_MAX_BYTES = 256 * 1024;                      // 超过就裁剪（正常一条 ~300B，200 条 ~60KB）
 const REC_MAX_BYTES = 2 * 1024;                         // 单条记录上限
 const LINE_MAX_BYTES = 8 * 1024;                        // 比这更长的行视为损坏（曾出现 200MB 的爆炸行）
@@ -358,7 +359,10 @@ function parseLine(line) {
 
 function trimHist() {
   try {
-    const keep = tailLines(HIST_FILE, KEEP).map(parseLine).filter(Boolean).slice(-KEEP);
+    const oldest = Date.now() - RETAIN_DAYS * 86400e3;
+    const keep = tailLines(HIST_FILE, KEEP).map(parseLine).filter(Boolean)
+      .filter((x) => atMs(x && x.at) >= oldest)      // 双闸：既不超过 300 条，也不超过 7 天
+      .slice(-KEEP);
     const tmp = HIST_FILE + '.tmp';
     fs.writeFileSync(tmp, keep.map((x) => JSON.stringify(x)).join('\n') + (keep.length ? '\n' : ''));
     fs.renameSync(tmp, HIST_FILE);
@@ -401,7 +405,7 @@ function storeInfo() {
     const last = rows[rows.length - 1];
     if (last) oldestAt = atMs(last.at);
   } catch (e) { /* 读不到就当 0 */ }
-  return { bytes, count, keep: KEEP, maxBytes: HIST_MAX_BYTES, oldestAt };
+  return { bytes, count, keep: KEEP, maxBytes: HIST_MAX_BYTES, retainDays: RETAIN_DAYS, oldestAt };
 }
 
 function lastResult() {

@@ -525,15 +525,23 @@ async function handler(req, res) {
     const since = Date.now() - hours * 3600e3;
     const atOf = (h) => { const v = h && h.at; const n = Number(v); return Number.isFinite(n) && n > 1e12 ? n : (Date.parse(v) || 0); };
     const inWindow = items.filter((h) => atOf(h) >= since);
+    const scopes = {
+      all: inWindow.filter((h) => h.scope !== 'quick').length,
+      quick: inWindow.filter((h) => h.scope === 'quick').length,
+    };
+    // ?scope=all 只给全量记录：前端拿它做聚合，免得自己筛
+    const wantScope = String(url.searchParams.get('scope') || '').toLowerCase();
+    const itemsOut = wantScope === 'all' ? items.filter((h) => h.scope !== 'quick') : items;
     return sendJson(res, 200, {
       ok: true,
       last: _selfcheck.lastResult(),
       hours,
+      scopes,
       runs: inWindow.length,
       coverageHours: items.length ? Math.max(0, Math.round((Date.now() - (atOf(items[items.length - 1]) || Date.now())) / 36e5 * 10) / 10) : 0,
       fails: _selfcheck.fails(inWindow),
       store: _selfcheck.storeInfo(),
-      items,
+      items: itemsOut,
     });
   }
 

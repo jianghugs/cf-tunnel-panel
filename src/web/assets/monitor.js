@@ -139,10 +139,14 @@ async function paintCheckHistory() {
   if (!wrap || !box) return;
   let items = [];
   let store = null;
+  let scopes = null;
+  let hoursN = 24;
   try {
     const r = await api('/api/selfcheck/history?limit=40');
     items = (r && r.items) || [];
     store = (r && r.store) || null;
+    scopes = (r && r.scopes) || null;
+    hoursN = (r && r.hours) || 24;
     paintCheckFails(r);
   } catch { return; }
   if (!items.length) { wrap.hidden = true; return; }
@@ -166,6 +170,9 @@ async function paintCheckHistory() {
     + `${agoTxt}：${last.total - last.fail}/${last.total} 通过`
     + (last.fail ? `，${last.fail} 项失败` : '')
     + (last.warn ? `，${last.warn} 项警告` : '');
+  if (scopes && (scopes.all + scopes.quick) > 1) {
+    $('#checkHistNote').textContent += `　·　最近 ${hoursN} 小时：全量 ${scopes.all} 次、快速 ${scopes.quick} 次`;
+  }
   const st2 = store;
   if (st2 && typeof st2.bytes === 'number') {
     const kb2 = st2.bytes >= 1024 * 1024 ? (st2.bytes / 1024 / 1024).toFixed(1) + ' MB' : Math.round(st2.bytes / 1024) + ' KB';
