@@ -9,6 +9,7 @@ let only5xx = false;
 let logEl = null;
 let paused = false;
 let auditRows = [];
+let auditOnlyFail = false;
 let auditPage = 1;
 let auditTotal = 0;
 const AUDIT_PER_PAGE = 10;
@@ -161,6 +162,7 @@ function auditQuery() {
   if (q) parts.push('q=' + encodeURIComponent(q));
   if (date) parts.push('date=' + encodeURIComponent(date));
   if (act) parts.push('act=' + encodeURIComponent(act));
+  if (auditOnlyFail) parts.push('bad=1');
   return parts.join('&');
 }
 
@@ -214,6 +216,15 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#accPath').addEventListener('input', () => { page = 1; renderAccess(); });
   const actSel = $('#auditAct');
   if (actSel) actSel.addEventListener('change', () => { auditPage = 1; loadAudit(); });
+  const afBtn = $('#btnAuditFail');
+  if (afBtn) afBtn.addEventListener('click', () => {
+    auditOnlyFail = !auditOnlyFail;
+    afBtn.setAttribute('aria-pressed', auditOnlyFail ? 'true' : 'false');
+    afBtn.classList.toggle('on', auditOnlyFail);
+    afBtn.textContent = auditOnlyFail ? '只看失败 · 开' : '只看失败';
+    auditPage = 1;
+    loadAudit();
+  });
   const only5 = $('#btnOnly5xx');
   const paintOnly5 = () => {
     if (!only5) return;

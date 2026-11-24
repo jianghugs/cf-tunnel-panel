@@ -165,6 +165,12 @@ async function paintCheckHistory() {
   if (st2 && typeof st2.bytes === 'number') {
     const kb2 = st2.bytes >= 1024 * 1024 ? (st2.bytes / 1024 / 1024).toFixed(1) + ' MB' : Math.round(st2.bytes / 1024) + ' KB';
     $('#checkHistNote').textContent += `　·　留痕 ${st2.count} 条 / ${kb2}（上限 ${st2.keep} 条 / ${Math.round(st2.maxBytes / 1024)} KB）`;
+    const leftRuns = st2.keep - st2.count;
+    if (leftRuns <= 40) {
+      $('#checkHistNote').textContent += leftRuns > 0
+        ? `；再跑 ${leftRuns} 次就会开始丢最早的记录`
+        : '；已满，正在丢弃最早的记录';
+    }
   }
 }
 

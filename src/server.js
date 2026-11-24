@@ -423,7 +423,10 @@ async function handler(req, res) {
     // limit 必须夹住：之前直接透传，一个 ?limit=99999 就能拉 300KB+
     const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 200, 1), 2000);
     return sendJson(res, 200, {
-      ...auditList({ limit, q: url.searchParams.get('q') || '', date, act: url.searchParams.get('act') || '' }),
+      ...auditList({
+        limit, q: url.searchParams.get('q') || '', date,
+        act: url.searchParams.get('act') || '', bad: url.searchParams.get('bad') === '1',
+      }),
       stats: auditStats(), days: auditDays(), actions: _audit.actions(),
     });
   }
@@ -496,6 +499,12 @@ async function handler(req, res) {
   // 一键体检：把「哪里不对」一次性查出来（面板/Caddy/出口/Prometheus/Grafana/磁盘）
   if (p === '/api/selfcheck' && req.method === 'GET') {
     const ids = String(url.searchParams.get('ids') || '').split(',').map((x) => x.trim()).filter(Boolean);
+    if (ids.length) {
+      const unknown = ids.filter((x) => !_selfcheck.CHECK_IDS.includes(x) && !/^exit-/.test(x));
+      if (unknown.length) {
+        return sendJson(res, 400, { ok: false, error: `未知的检查项：${unknown.join('、')}`, valid: _selfcheck.CHECK_IDS });
+      }
+    }
     const { out } = await runSelfcheckOnce({ ids });
     const only = String(url.searchParams.get('only') || '').toLowerCase();
     if (only === 'bad') {

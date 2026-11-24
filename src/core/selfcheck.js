@@ -55,6 +55,10 @@ async function step(id, name, fn) {
  * @param {object} state   当前 state（含 settings / tunnels / routes）
  * @param {object} ctx     { runtime, version, code, imageCode, drift, role }
  */
+/** 可以点名的检查项（出口那几项是动态的 exit-<id>，不在这里列） */
+const CHECK_IDS = ['version', 'role', 'caddy', 'routes', 'shadow', 'flaps',
+  'prometheus', 'scrape', 'grafana', 'disk', 'state', 'logs'];
+
 async function runChecks(state, ctx = {}, opts = {}) {
   const s = state || {};
   const settings = s.settings || {};
@@ -437,4 +441,4 @@ function history(n = 20) {
   } catch { return []; }
 }
 
-module.exports = { fails, history, lastResult, persist, runChecks, storeInfo };
+module.exports = { CHECK_IDS, fails, history, lastResult, persist, runChecks, storeInfo };

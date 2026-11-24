@@ -288,12 +288,14 @@ function byHour(hours = 12) {
 }
 
 /** 读审计：读文件（跨实例共享、重启也在），支持按日期翻 */
-function list({ limit = 100, q = '', date = '', act = '' } = {}) {
+function list({ limit = 100, q = '', date = '', act = '', bad = false } = {}) {
   const n = Math.min(Math.max(Number(limit) || 100, 1), 2000);
   let rows = readRows(date);
   if (!rows.length) rows = buffer.slice();
   const total = rows.length;
-  rows = rows.filter((r) => matches(r, q) && (!act || String(r.action || '') === act)).reverse().slice(0, n);
+  rows = rows.filter((r) => matches(r, q)
+    && (!act || String(r.action || '') === act)
+    && (!bad || r.ok === false)).reverse().slice(0, n);
   return { ok: true, available: rows.length > 0 || total > 0, count: total, rows, date: date || 'recent', keepDays: KEEP_DAYS };
 }
 

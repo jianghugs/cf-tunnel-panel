@@ -1185,6 +1185,19 @@ try {
     && typeof hstore.d.store.count === 'number' && hstore.d.store.keep > 0 && hstore.d.store.maxBytes > 0,
     JSON.stringify(hstore.d.store || {}));
 
+  // v0.29.33：点名不存在的检查项要报错，而不是静默返回空
+  const badIds = await j('/api/selfcheck?ids=caddy,no-such-thing');
+  ok('体检：未知的 ids 返回 400 并列出可用项',
+    badIds.status === 400 && Array.isArray(badIds.d.valid) && badIds.d.valid.includes('caddy')
+    && /未知的检查项/.test(String(badIds.d.error || '')),
+    `${badIds.status} ${String(badIds.d.error || '').slice(0, 40)}`);
+
+  // v0.29.33：审计「只看失败」
+  const auBad = await j('/api/audit?limit=50&bad=1');
+  ok('审计：bad=1 只返回失败记录',
+    auBad.status === 200 && (auBad.d.rows || []).every((r) => r.ok === false),
+    (auBad.d.rows || []).map((r) => `${r.action}:${r.ok}`).slice(0, 3).join(' '));
+
   // v0.29.16：网络重连（cloudflared 自己重连、进程没退出）以前完全看不见，只有翻 docker logs 才知道
   ok('体检：包含「出口链路稳定性」一项', (sc.d.checks || []).some((c) => c.id === 'flaps'), (sc.d.checks || []).map((c) => c.id).join(','));
   const anyExit = (st.d.runtime.tunnels || [])[0] || {};

@@ -79,6 +79,7 @@
         <select id="auditDate" aria-label="按日期查看审计日志" style="width:150px">
           <option value="">最近两天</option>
         </select>
+        <button class="sm ghost" id="btnAuditFail" aria-pressed="false" title="只看失败的记录（登录失败、跨站拦截、口令错误等）">只看失败</button>
         <a class="sm ghost" id="btnAuditCsv" href="/api/audit.csv?limit=2000" download>导出 CSV</a>
       </div>
     </div>

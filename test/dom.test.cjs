@@ -805,6 +805,20 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     chk('体检卡: 底注显示留痕占用', /st2\.count/.test(mjs4) && /上限 \$\{st2\.keep\}/.test(mjs4), '');
   }
 
+  {
+    const { doc: doa, win: woa } = await open('/observe', 1000);
+    const bf = doa.querySelector('#btnAuditFail');
+    chk('审计: 有「只看失败」开关', !!bf && bf.getAttribute('aria-pressed') === 'false', bf ? bf.textContent.trim() : 'missing');
+    if (bf) {
+      bf.click();
+      await sleep(200);
+      chk('审计: 点一下变开启', bf.getAttribute('aria-pressed') === 'true' && /开/.test(bf.textContent), bf.textContent.trim());
+    }
+    woa.close();
+    const mjs5 = await (await fetch(BASE + '/assets/monitor.js')).text();
+    chk('体检留痕: 接近上限会提示', /开始丢最早的记录/.test(mjs5) && /leftRuns/.test(mjs5), '');
+  }
+
   let bad = 0;
   for (const [ok, name, extra] of results) {
     if (!ok) bad++;
