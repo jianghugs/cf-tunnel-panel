@@ -1168,6 +1168,23 @@ try {
     void mark;
   }
 
+  // v0.29.32：可以只跑关心的几项；审计可按动作筛；留痕概况随历史一起给
+  const onlyIds = await j('/api/selfcheck?ids=caddy,disk');
+  ok('体检：?ids= 只跑指定项',
+    onlyIds.status === 200 && (onlyIds.d.checks || []).length === 2
+    && (onlyIds.d.checks || []).every((c) => ['caddy', 'disk'].includes(c.id))
+    && onlyIds.d.total === 2,
+    (onlyIds.d.checks || []).map((c) => c.id).join(','));
+  const au2 = await j('/api/audit?limit=20&act=' + encodeURIComponent('停用规则'));
+  ok('审计：可按动作筛选', au2.status === 200 && Array.isArray(au2.d.actions)
+    && (au2.d.rows || []).every((r) => r.action === '停用规则'),
+    `actions=${(au2.d.actions || []).length} rows=${(au2.d.rows || []).length}`);
+  const hstore = await j('/api/selfcheck/history?limit=1');
+  ok('体检历史：带留痕占用与上限',
+    hstore.status === 200 && hstore.d.store && typeof hstore.d.store.bytes === 'number'
+    && typeof hstore.d.store.count === 'number' && hstore.d.store.keep > 0 && hstore.d.store.maxBytes > 0,
+    JSON.stringify(hstore.d.store || {}));
+
   // v0.29.16：网络重连（cloudflared 自己重连、进程没退出）以前完全看不见，只有翻 docker logs 才知道
   ok('体检：包含「出口链路稳定性」一项', (sc.d.checks || []).some((c) => c.id === 'flaps'), (sc.d.checks || []).map((c) => c.id).join(','));
   const anyExit = (st.d.runtime.tunnels || [])[0] || {};

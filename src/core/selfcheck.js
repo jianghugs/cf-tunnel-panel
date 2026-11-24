@@ -55,34 +55,37 @@ async function step(id, name, fn) {
  * @param {object} state   当前 state（含 settings / tunnels / routes）
  * @param {object} ctx     { runtime, version, code, imageCode, drift, role }
  */
-async function runChecks(state, ctx = {}) {
+async function runChecks(state, ctx = {}, opts = {}) {
   const s = state || {};
   const settings = s.settings || {};
   const runtime = ctx.runtime || {};
   const tasks = [];                 // 先全部发出去，最后一起等：12 项并行最慢 ≈ 6 秒
+  // 外面（cron / 监控）常只关心几项：?ids=caddy,disk 就真的不去探出口，省掉最慢的那几次 HTTP
+  const want = Array.isArray(opts.ids) && opts.ids.length ? new Set(opts.ids) : null;
+  const push = (id, name, fn) => { if (!want || want.has(id)) tasks.push(step(id, name, fn)); };
 
   // 1) 版本与代码指纹：docker cp 部署过的老坑
-  tasks.push(step('version', '版本与代码一致', async () => {
+  push('version', '版本与代码一致', async () => {
     const drift = ctx.drift === true;
     return {
       status: drift ? 'warn' : 'ok',
       detail: `${ctx.version || pkgVersion()} · 代码 ${short(ctx.code)}${ctx.imageCode || ctx.build ? ` · 镜像 ${short(ctx.imageCode || ctx.build)}` : ''}`,
       hint: drift ? '运行中的代码和镜像里打包的不一样（很可能是 docker cp 临时改过）。重新构建镜像再滚动升级即可消除。' : '',
     };
-  }));
+  });
 
   // 2) 实例角色
-  tasks.push(step('role', '实例角色', async () => {
+  push('role', '实例角色', async () => {
     const role = ctx.role || 'leader';
     return {
       status: role === 'standby' ? 'warn' : 'ok',
       detail: role === 'standby' ? '只读备份实例（写操作会 409）' : '主实例（leader，负责下发配置）',
       hint: role === 'standby' ? '这是滚动升级期间的正常状态。如果一直停在 standby，说明主实例的租约没释放。' : '',
     };
-  }));
+  });
 
   // 3) Caddy 管理接口
-  tasks.push(step('caddy', 'Caddy 管理接口', async () => {
+  push('caddy', 'Caddy 管理接口', async () => {
     // Caddy 的 admin 接口会校验 Origin，必须带（和 pusher.js 下发时同一个值）
     const r = await fetchText(`${CADDY_ADMIN}/config/`, TIMEOUT, { Origin: CADDY_ADMIN });
     if (r.status >= 200 && r.status < 300) return { status: 'ok', detail: `${CADDY_ADMIN} 有响应（HTTP ${r.status}）` };
@@ -91,10 +94,10 @@ async function runChecks(state, ctx = {}) {
       detail: `HTTP ${r.status}`,
       hint: 'Caddy 容器可能没起来，或 admin 端口不是 20190。看 `docker ps | grep caddy`。',
     };
-  }));
+  });
 
   // 4) 已载入的路由数
-  tasks.push(step('routes', '规则数一致', async () => {
+  push('routes', '规则数一致', async () => {
     const loaded = runtime.caddy ? runtime.caddy.routeCount : null;
     const local = (s.routes || []).filter((x) => !x.disabled).length;
     const caddyOk = !!(runtime.caddy && runtime.caddy.ok);
@@ -105,10 +108,10 @@ async function runChecks(state, ctx = {}) {
       detail: `本地 ${local} 条 · Caddy 里 ${loaded} 条`,
       hint: loaded === local ? '' : '两边不一致说明最后一次下发没完全生效；点「规则」页的「下发到 Caddy」重试。',
     };
-  }));
+  });
 
   // 5) 遮蔽检测（path:/ 吃掉同域名其它路径那个坑）
-  tasks.push(step('shadow', '规则遮蔽', async () => {
+  push('shadow', '规则遮蔽', async () => {
     const list = (runtime.caddy && runtime.caddy.shadowed) || [];
     if (!list.length) return { status: 'ok', detail: '没有规则被同域名的更宽规则吃掉' };
     return {
@@ -116,12 +119,12 @@ async function runChecks(state, ctx = {}) {
       detail: `${list.length} 条被遮蔽`,
       hint: list.slice(0, 3).map((x) => `${x.path || x.host} 被 ${x.by || '?'} 覆盖`).join('；'),
     };
-  }));
+  });
 
   // 6) 出口：进程状态 + 公网可访问性（最多查 5 个，免得一次体检拖太久）
   const exits = (s.tunnels || []).filter((t) => t.mode === 'named');
   for (const t of exits.slice(0, 5)) {
-    tasks.push(step(`exit-${t.id}`, `出口：${t.name || t.id}`, async () => {
+    push(`exit-${t.id}`, `出口：${t.name || t.id}`, async () => {
       const rt = runtime.tunnels && runtime.tunnels[t.id];
       const st = rt ? rt.status : 'stopped';
       const url = (rt && (rt.publicUrl || rt.url)) || '';
@@ -148,12 +151,12 @@ async function runChecks(state, ctx = {}) {
         detail: `${url} → HTTP ${r.status}`,
         hint: healthy ? '' : 'cloudflared 在跑但对端返回 5xx；多半是背后那个上游服务挂了，或 Cloudflare 侧的 ingress 没指到这里。',
       };
-    }));
+    });
   }
 
   // 6b) 出口链路稳定性：cloudflared 与边缘之间的 QUIC 断线重连不会让进程退出，
   // 面板上原本完全看不见 —— 但访客那一刻就是「网站抽了一下」，所以单独查一次。
-  tasks.push(step('flaps', '出口链路稳定性', async () => {
+  push('flaps', '出口链路稳定性', async () => {
     const running = (s.tunnels || [])
       .filter((t) => t.mode === 'named')
       .map((t) => ({ name: t.name || t.id, rt: (runtime.tunnels || {})[t.id] }))
@@ -175,11 +178,11 @@ async function runChecks(state, ctx = {}) {
       };
     }
     return { status: 'ok', detail: total ? `最近 10 分钟 ${total} 次网络重连（偶发，属正常）` : '最近 10 分钟没有网络重连' };
-  }));
+  });
 
   // 7) Prometheus
   const prom = trimUrl((settings.monitoring || {}).promUrl);
-  tasks.push(step('prometheus', 'Prometheus', async () => {
+  push('prometheus', 'Prometheus', async () => {
     if (!prom) return { status: 'warn', detail: '没配地址', hint: '设置 → 监控嵌入 → Prometheus 地址' };
     const r = await fetchText(`${prom}/-/ready`);
     return {
@@ -187,10 +190,10 @@ async function runChecks(state, ctx = {}) {
       detail: `${prom} → HTTP ${r.status}`,
       hint: r.status === 200 ? '' : 'Prometheus 容器没起来，或地址写错（端口默认 9090）。',
     };
-  }));
+  });
 
   // 7b) Prometheus 有没有真的抓到面板（ready 只是它自己活着）
-  tasks.push(step('scrape', 'Prometheus 抓到面板', async () => {
+  push('scrape', 'Prometheus 抓到面板', async () => {
     if (!prom) return { status: 'warn', detail: '没配 Prometheus 地址' };
     const r = await fetchText(`${prom}/api/v1/targets`);
     let list = [];
@@ -207,11 +210,11 @@ async function runChecks(state, ctx = {}) {
         ? `抓不到：${realDown.map((t) => t.scrapeUrl).slice(0, 3).join('、')}`
         : up ? '' : '一个目标都没抓到，看 prometheus.yml 的 targets 与面板端口。',
     };
-  }));
+  });
 
   // 8) Grafana
   const gf = settings.grafana || {};
-  tasks.push(step('grafana', 'Grafana', async () => {
+  push('grafana', 'Grafana', async () => {
     if (!gf.enabled) return { status: 'warn', detail: '没启用嵌入', hint: '设置 → 监控嵌入 → 打开「嵌入 Grafana」' };
     // 优先打局域网地址：走公网主机名的话这一枪要穿过 Cloudflare，3 秒经常不够，
     // 会变成「体检时好时坏」的假失败（v0.29.18 前它就是这样反复报超时）
@@ -234,10 +237,10 @@ async function runChecks(state, ctx = {}) {
       detail: `${base} → HTTP ${r.status}${db ? ` · 数据库 ${db}` : ''}`,
       hint: healthy ? '' : 'Grafana 没起来或数据库没就绪；`docker logs cfp-grafana` 看原因。',
     };
-  }));
+  });
 
   // 9) 数据盘
-  tasks.push(step('disk', '数据盘空间', async () => {
+  push('disk', '数据盘空间', async () => {
     const st = fs.statfsSync(DATA_DIR);
     const free = st.bavail * st.bsize;
     const total = st.blocks * st.bsize;
@@ -248,10 +251,10 @@ async function runChecks(state, ctx = {}) {
       detail: `剩余 ${kb(free)} / 共 ${kb(total)}（${Math.round(pct * 100)}%）`,
       hint: status === 'ok' ? '' : '审计与备份都写在数据盘上，满了会写不进去；清 audit/ 与 backups/ 里的老文件。',
     };
-  }));
+  });
 
   // 10) 状态文件可写 + 新鲜度
-  tasks.push(step('state', '状态文件', async () => {
+  push('state', '状态文件', async () => {
     const st = fs.statSync(STATE_FILE);
     const ageMin = Math.round((Date.now() - st.mtimeMs) / 60000);
     fs.accessSync(STATE_FILE, fs.constants.W_OK);
@@ -259,10 +262,10 @@ async function runChecks(state, ctx = {}) {
       status: 'ok',
       detail: `${path.basename(STATE_FILE)} ${kb(st.size)} · ${ageMin} 分钟前改过`,
     };
-  }));
+  });
 
   // 11) 访问日志：最近 10 分钟的噪音占比 + 访问行能回溯多久（趋势图的可用窗口）
-  tasks.push(step('logs', '访问日志', async () => {
+  push('logs', '访问日志', async () => {
     let st;
     try { st = fs.statSync(ACCESS_LOG_FILE); } catch {
       return { status: 'ok', detail: '还没有访问日志（面板有流量后会自动出现）' };
@@ -296,7 +299,7 @@ async function runChecks(state, ctx = {}) {
       hint: status === 'ok' ? ''
         : '健康检查正在刷日志（两台面板同时在线时才会这样），趋势图能覆盖的窗口会缩水；滚动结束后自动恢复。',
     };
-  }));
+  });
 
   const checks = await Promise.all(tasks);             // 顺序与上面声明一致
 
@@ -383,6 +386,19 @@ function persist(result) {
   }
 }
 
+/** 留痕文件的概况：给「设置 → 关于」和体检卡显示占用/最老一条，避免又长成 360MB 那种事故 */
+function storeInfo() {
+  let bytes = 0, count = 0, oldestAt = 0;
+  try { bytes = fs.statSync(HIST_FILE).size; } catch (e) { bytes = 0; }
+  try {
+    const rows = history(KEEP);
+    count = rows.length;
+    const last = rows[rows.length - 1];
+    if (last) oldestAt = atMs(last.at);
+  } catch (e) { /* 读不到就当 0 */ }
+  return { bytes, count, keep: KEEP, maxBytes: HIST_MAX_BYTES, oldestAt };
+}
+
 function lastResult() {
   try { return JSON.parse(fs.readFileSync(LAST_FILE, 'utf8')); } catch { return null; }
 }
@@ -421,4 +437,4 @@ function history(n = 20) {
   } catch { return []; }
 }
 
-module.exports = { fails, history, lastResult, persist, runChecks };
+module.exports = { fails, history, lastResult, persist, runChecks, storeInfo };

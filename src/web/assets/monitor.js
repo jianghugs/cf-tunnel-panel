@@ -138,9 +138,11 @@ async function paintCheckHistory() {
   const box = $('#checkHist');
   if (!wrap || !box) return;
   let items = [];
+  let store = null;
   try {
     const r = await api('/api/selfcheck/history?limit=40');
     items = (r && r.items) || [];
+    store = (r && r.store) || null;
     paintCheckFails(r);
   } catch { return; }
   if (!items.length) { wrap.hidden = true; return; }
@@ -159,6 +161,11 @@ async function paintCheckHistory() {
     + `${agoTxt}：${last.total - last.fail}/${last.total} 通过`
     + (last.fail ? `，${last.fail} 项失败` : '')
     + (last.warn ? `，${last.warn} 项警告` : '');
+  const st2 = store;
+  if (st2 && typeof st2.bytes === 'number') {
+    const kb2 = st2.bytes >= 1024 * 1024 ? (st2.bytes / 1024 / 1024).toFixed(1) + ' MB' : Math.round(st2.bytes / 1024) + ' KB';
+    $('#checkHistNote').textContent += `　·　留痕 ${st2.count} 条 / ${kb2}（上限 ${st2.keep} 条 / ${Math.round(st2.maxBytes / 1024)} KB）`;
+  }
 }
 
 /** 最近 24 小时哪些检查项出过问题（反复失败的老毛病比「刚刚失败一次」更值得看） */

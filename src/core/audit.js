@@ -288,13 +288,25 @@ function byHour(hours = 12) {
 }
 
 /** 读审计：读文件（跨实例共享、重启也在），支持按日期翻 */
-function list({ limit = 100, q = '', date = '' } = {}) {
+function list({ limit = 100, q = '', date = '', act = '' } = {}) {
   const n = Math.min(Math.max(Number(limit) || 100, 1), 2000);
   let rows = readRows(date);
   if (!rows.length) rows = buffer.slice();
   const total = rows.length;
-  rows = rows.filter((r) => matches(r, q)).reverse().slice(0, n);
+  rows = rows.filter((r) => matches(r, q) && (!act || String(r.action || '') === act)).reverse().slice(0, n);
   return { ok: true, available: rows.length > 0 || total > 0, count: total, rows, date: date || 'recent', keepDays: KEEP_DAYS };
+}
+
+/** 动作下拉用的候选：最近记录里去重后的动作名（按出现次数排） */
+function actions(limit = 24) {
+  const rows = readRows('').length ? readRows('') : buffer.slice();
+  const cnt = new Map();
+  for (const r of rows) {
+    const a = String(r.action || '').trim();
+    if (!a) continue;
+    cnt.set(a, (cnt.get(a) || 0) + 1);
+  }
+  return [...cnt.entries()].sort((x, y) => y[1] - x[1]).slice(0, limit).map(([k, v]) => ({ action: k, count: v }));
 }
 
 function stats() {
@@ -323,6 +335,6 @@ function stats() {
 migrateLegacy();
 ensureDir();
 
-module.exports = { record, list, stats, byHour, actionOf, days, isMutation, AUDIT_MAX, AUDIT_DIR, KEEP_DAYS };
+module.exports = { record, list, stats, byHour, actionOf, days, isMutation, actions, AUDIT_MAX, AUDIT_DIR, KEEP_DAYS };
 /** 兼容旧调用：AUDIT_FILE 现在指向「今天」的分日文件 */
 Object.defineProperty(module.exports, 'AUDIT_FILE', { enumerable: true, get: () => fileFor() });

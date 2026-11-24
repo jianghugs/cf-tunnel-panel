@@ -156,9 +156,11 @@ function renderAudit() {
 function auditQuery() {
   const q = ($('#auditQ') || {}).value || '';
   const date = ($('#auditDate') || {}).value || '';
+  const act = ($('#auditAct') || {}).value || '';
   const parts = ['limit=200'];
   if (q) parts.push('q=' + encodeURIComponent(q));
   if (date) parts.push('date=' + encodeURIComponent(date));
+  if (act) parts.push('act=' + encodeURIComponent(act));
   return parts.join('&');
 }
 
@@ -177,8 +179,20 @@ async function loadAuditDays() {
   } catch { /* 读不到就只留「最近两天」 */ }
 }
 
+function fillAuditActions(list) {
+  const sel = $('#auditAct');
+  if (!sel || !Array.isArray(list) || !list.length) return;
+  const cur = sel.value;
+  const opts = ['<option value="">全部动作</option>'].concat(list.map((x) =>
+    `<option value="${esc(x.action)}">${esc(x.action)} ×${x.count}</option>`));
+  if (sel.dataset.n === String(list.length) && !cur) { /* 已经灌过且没选中，跳过重绘 */ }
+  sel.innerHTML = opts.join('');
+  if (cur) sel.value = cur;
+}
+
 async function loadAudit() {
   const d = await api(`/api/audit?${auditQuery()}`);
+  fillAuditActions(d.actions);
   auditRows = d.rows || [];
   auditTotal = Number(d.count || 0) || (d.stats && d.stats.count) || auditRows.length;
   renderAudit();
@@ -198,6 +212,8 @@ document.addEventListener('DOMContentLoaded', () => {
     $(id).addEventListener('change', () => { page = 1; renderAccess(); });
   }
   $('#accPath').addEventListener('input', () => { page = 1; renderAccess(); });
+  const actSel = $('#auditAct');
+  if (actSel) actSel.addEventListener('change', () => { auditPage = 1; loadAudit(); });
   const only5 = $('#btnOnly5xx');
   const paintOnly5 = () => {
     if (!only5) return;

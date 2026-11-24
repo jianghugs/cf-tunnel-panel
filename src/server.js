@@ -422,7 +422,10 @@ async function handler(req, res) {
     const date = url.searchParams.get('date') || '';
     // limit 必须夹住：之前直接透传，一个 ?limit=99999 就能拉 300KB+
     const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 200, 1), 2000);
-    return sendJson(res, 200, { ...auditList({ limit, q: url.searchParams.get('q') || '', date }), stats: auditStats(), days: auditDays() });
+    return sendJson(res, 200, {
+      ...auditList({ limit, q: url.searchParams.get('q') || '', date, act: url.searchParams.get('act') || '' }),
+      stats: auditStats(), days: auditDays(), actions: _audit.actions(),
+    });
   }
 
   if (p === '/api/state' && req.method === 'GET') {
@@ -492,7 +495,8 @@ async function handler(req, res) {
 
   // 一键体检：把「哪里不对」一次性查出来（面板/Caddy/出口/Prometheus/Grafana/磁盘）
   if (p === '/api/selfcheck' && req.method === 'GET') {
-    const { out } = await runSelfcheckOnce();
+    const ids = String(url.searchParams.get('ids') || '').split(',').map((x) => x.trim()).filter(Boolean);
+    const { out } = await runSelfcheckOnce({ ids });
     const only = String(url.searchParams.get('only') || '').toLowerCase();
     if (only === 'bad') {
       const bad = (out.checks || []).filter((c) => c.status !== 'ok');
@@ -515,6 +519,7 @@ async function handler(req, res) {
       runs: inWindow.length,
       coverageHours: items.length ? Math.max(0, Math.round((Date.now() - (atOf(items[items.length - 1]) || Date.now())) / 36e5 * 10) / 10) : 0,
       fails: _selfcheck.fails(inWindow),
+      store: _selfcheck.storeInfo(),
       items,
     });
   }
@@ -2249,7 +2254,15 @@ function selfcheckRecovered(rec) {
  * 定时那一路和手动点按钮撞在一起时，两路同时打公网既慢又会让结果互相覆盖。
  */
 let _selfcheckInflight = null;
-async function runSelfcheckOnce() {
+async function runSelfcheckOnce(opts) {
+  const ids = (opts && Array.isArray(opts.ids) ? opts.ids : []).filter(Boolean);
+  // 只跑指定项时不走单飞、也不写留痕：半套结果写进历史会让「最近 24 小时」统计失真
+  if (ids.length) {
+    maybeReloadState();
+    const c2 = selfcheckContext();
+    const out2 = await _selfcheck.runChecks(state, { runtime: c2.rt, ...c2.meta }, { ids });
+    return { out: out2, rec: null };
+  }
   if (_selfcheckInflight) return _selfcheckInflight;
   _selfcheckInflight = (async () => {
     maybeReloadState();

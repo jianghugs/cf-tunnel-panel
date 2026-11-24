@@ -118,8 +118,18 @@ async function loadSystem() {
       <tr><td class="muted">主机</td><td class="mono">${esc(d.host)}</td></tr>
       <tr><td class="muted">面板请求</td><td class="mono">${prAll.total || 0} 次（2xx ${pr['2xx'] || 0} · 3xx ${pr['3xx'] || 0} · 4xx ${pr['4xx'] || 0} · 5xx ${pr['5xx'] || 0}）</td></tr>
       <tr><td class="muted">历史采样</td><td class="mono">${(d.history && d.history.samples) || 0} 点 · 通知 ${(d.history && d.history.notifies) || 0} 条（两台共享）</td></tr>
+      <tr><td class="muted">体检留痕</td><td class="mono" id="aboutSelfcheck">读取中…</td></tr>
       <tr><td class="muted">最热的面板路径</td><td class="mono">${(d.panelRequests && d.panelRequests.top || []).slice(0, 3).map((x) => esc(x.path) + ' ×' + x.count).join('　') || '—'}</td></tr>
     </tbody></table>`;
+    // 单独取一次留痕概况：不塞进 /api/about，免得这个接口为了两行字去读文件
+    api('/api/selfcheck/history?limit=1').then((h) => {
+      const cell = $('#aboutSelfcheck');
+      if (!cell || !h || !h.store) return;
+      const kb = (n) => (n >= 1024 * 1024 ? (n / 1024 / 1024).toFixed(1) + ' MB' : Math.round(n / 1024) + ' KB');
+      const age = h.store.oldestAt ? Math.max(0, Math.round((Date.now() - h.store.oldestAt) / 36e5 * 10) / 10) : 0;
+      cell.textContent = `${h.store.count} 条 / ${kb(h.store.bytes)}（上限 ${h.store.keep} 条 / ${Math.round(h.store.maxBytes / 1024)} KB）`
+        + (age ? `，最早一条 ${age} 小时前` : '');
+    }).catch(() => { const c2 = $('#aboutSelfcheck'); if (c2) c2.textContent = '读取失败'; });
   } catch (e) {
     box.innerHTML = `<div class="hint err">${esc(e.message)}</div>`;
   }

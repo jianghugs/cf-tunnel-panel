@@ -786,6 +786,25 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     wm.close();
   }
 
+  {
+    // 审计按动作筛选：下拉最终会被填上动作名
+    const { doc: dob, win: wob } = await open('/observe', 1000);
+    let opts = 0;
+    for (let i = 0; i < 40 && opts < 2; i++) {
+      const sel = dob.querySelector('#auditAct');
+      opts = sel ? sel.querySelectorAll('option').length : 0;
+      if (opts < 2) await sleep(150);
+    }
+    chk('审计: 动作下拉有候选', opts >= 2, 'options=' + opts);
+    wob.close();
+
+    // 设置页「关于」里能看到体检留痕占用
+    const sjs = await (await fetch(BASE + '/assets/settings.js')).text();
+    chk('设置页: 关于含体检留痕一行', /aboutSelfcheck/.test(sjs) && /体检留痕/.test(sjs), '');
+    const mjs4 = await (await fetch(BASE + '/assets/monitor.js')).text();
+    chk('体检卡: 底注显示留痕占用', /st2\.count/.test(mjs4) && /上限 \$\{st2\.keep\}/.test(mjs4), '');
+  }
+
   let bad = 0;
   for (const [ok, name, extra] of results) {
     if (!ok) bad++;
