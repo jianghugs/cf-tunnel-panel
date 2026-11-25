@@ -2,6 +2,20 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.37
+
+### 面板里多了「怎么申请隧道 token」卡片
+
+设置页新增分区（导航第一项）：**怎么申请隧道 token** —— 默认折叠，展开是五步操作 + 一张「现象 → 原因/处理」表：
+
+- 建隧道（Networks → Tunnels → Create，选 Cloudflared）；
+- 在安装命令里取 `--token` 后面那串（184 字符、`eyJh` 开头），或从 Tunnels 列表的 token 图标再取；
+- Public Hostnames 必须加，否则 **1033**；
+- 回面板粘贴（整条 `docker run …` 直接粘也行）；
+- 验收：`curl -sI https://<域名>` 带 `cf-ray`。
+
+表里覆盖 `1033`、`530/502`、「尚未检测到连接」、重连数上涨四种常见状态。同一份内容在仓库的 `docs/CLOUDFLARE-TUNNEL.md`，卡片里有链接。
+
 ## v0.29.36
 
 ### 留痕双闸：最多 300 条，最多 7 天

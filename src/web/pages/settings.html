@@ -9,7 +9,7 @@
     <span class="muted" id="searchHint"></span>
   </div>
   <nav class="subnav" aria-label="设置分区">
-    <a href="#sec-site">站点</a><a href="#sec-maint">维护</a><a href="#sec-security">安全</a><a href="#sec-notify">通知</a>
+    <a href="#sec-tunnelhelp">怎么申请隧道</a><a href="#sec-site">站点</a><a href="#sec-maint">维护</a><a href="#sec-security">安全</a><a href="#sec-notify">通知</a>
     <a href="#sec-login">登录</a><a href="#sec-sessions">会话</a><a href="#sec-viewer">只读</a><a href="#sec-totp">双因子</a>
     <a href="#sec-operator">运维</a><a href="#sec-nhist">通知记录</a><a href="#sec-backup">备份</a><a href="#sec-grafana">监控嵌入</a><a href="#sec-io">导入导出</a><a href="#sec-code">配置即代码</a><a href="#sec-about">关于</a>
   </nav>
@@ -21,6 +21,32 @@
         <div class="field"><label>Caddy 监听地址</label><input id="caddyListen" placeholder=":8080" /><span class="hint">改成别的端口后，隧道的上游也要一起改</span></div>
       </div>
       <div class="field"><label>未命中规则的 404 文案</label><textarea id="notFoundBody" rows="3"></textarea></div>
+    </div>
+  </div>
+
+  <div id="sec-tunnelhelp" class="card">
+    <div class="hd"><h2>怎么申请隧道 token</h2><div class="sub">在 Cloudflare 建一条隧道、拿到 token、接到出口里</div></div>
+    <div class="bd stack">
+      <details class="tut" id="thHelp">
+        <summary>展开看步骤与常见错误</summary>
+        <ol class="tut-steps">
+          <li>打开 <a href="https://one.dash.cloudflare.com" target="_blank" rel="noopener">Cloudflare 控制台</a> → <b>Networks → Tunnels → Create a tunnel</b> → 选 <b>Cloudflared</b> → 起个名字保存。</li>
+          <li>页面给的安装命令里，<code>--token</code> 后面那串（<b>184 字符、<code>eyJh</code> 开头</b>）就是 token；也可以在 Tunnels 列表里这一行右侧的 token 图标再取一次（<code>⋯ → Refresh token</code> 会让旧 token 立刻失效）。</li>
+          <li>切到 <b>Public Hostnames</b> 加一条：Subdomain <code>app</code> → Service <code>HTTP 127.0.0.1:8080</code>（指向面板的 Caddy）。<b>这一步不做，访问域名就是 1033。</b>DNS 会自动生成 <code>CNAME &lt;tunnelId&gt;.cfargotunnel.com</code>，确认是橙云（Proxied）。</li>
+          <li>回面板 <b>出口 → 命名隧道</b> 粘贴 token 并保存。整条 <code>docker run … --token eyJ…</code> 命令直接粘进去也可以，面板会把 token 抠出来。</li>
+          <li>验收：<code>curl -sI https://&lt;域名&gt;</code> 返回 200/302 且带 <code>cf-ray</code>；面板「一键体检」里的「出口」一项会同时看进程与公网可达性。</li>
+        </ol>
+        <p class="sub">更省事的做法：出口页右上角「<b>一键新建出口</b>」会一次做完「建隧道 → 取 token → 写 ingress → 建 CNAME → 本地接入」，勾「只演练」可以先看计划。完整版见 <a href="https://github.com/jianghugs/cf-tunnel-panel/blob/main/docs/CLOUDFLARE-TUNNEL.md" target="_blank" rel="noopener">docs/CLOUDFLARE-TUNNEL.md</a>。</p>
+        <table class="tbl compact">
+          <thead><tr><th>现象</th><th>原因 / 处理</th></tr></thead>
+          <tbody>
+            <tr><td><code>1033</code></td><td>隧道没写 ingress（Public Hostnames 没加）</td></tr>
+            <tr><td><code>530</code> / <code>502</code></td><td>隧道通了但 Caddy 没接住：上游挂了或规则没命中，去「规则 → 模拟匹配」查</td></tr>
+            <tr><td>显示「尚未检测到连接」</td><td>token 复制不全，或被 Refresh 过</td></tr>
+            <tr><td>重连次数一直涨</td><td>QUIC 被中途掐断：出口协议从 <code>auto</code> 改 <code>http2</code></td></tr>
+          </tbody>
+        </table>
+      </details>
     </div>
   </div>
 

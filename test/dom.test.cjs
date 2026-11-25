@@ -847,6 +847,23 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     chk('体检卡: scopes 在 try 外声明（避免未定义）', /let scopes = null;/.test(sjs2), '');
   }
 
+  {
+    const { doc: dst, win: wst } = await open('/settings#sec-tunnelhelp', 1200);
+    const card = dst.querySelector('#sec-tunnelhelp');
+    chk('设置页: 有「怎么申请隧道」卡片', !!card && /申请隧道/.test(card.textContent), card ? card.querySelector('h2').textContent : 'missing');
+    const det = dst.querySelector('#thHelp');
+    chk('设置页: 教程默认折叠', !!det && det.open === false, det ? String(det.open) : 'missing');
+    if (det) {
+      det.open = true;
+      chk('设置页: 展开后有步骤与坑表',
+        det.querySelectorAll('li').length >= 4 && !!det.querySelector('table'),
+        `li=${det.querySelectorAll('li').length} table=${!!det.querySelector('table')}`);
+    }
+    const nav = dst.querySelector('.subnav');
+    chk('设置页: 导航含「怎么申请隧道」', !!nav && /sec-tunnelhelp/.test(nav.innerHTML), '');
+    wst.close();
+  }
+
   let bad = 0;
   for (const [ok, name, extra] of results) {
     if (!ok) bad++;

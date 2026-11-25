@@ -1007,6 +1007,18 @@ const EN_V02916 = {
 };
 Object.assign(EN, EN_V02916);
 
+const EN_V02937 = {
+  '怎么申请隧道 token': 'How to get a tunnel token',
+  '在 Cloudflare 建一条隧道、拿到 token、接到出口里': 'Create a tunnel in Cloudflare, grab its token, plug it into an exit',
+  '怎么申请隧道': 'Tunnel token',
+  '展开看步骤与常见错误': 'Show steps and common errors',
+  '现象': 'Symptom',
+  '原因 / 处理': 'Cause / fix',
+  '更省事的做法：出口页右上角「': 'Easier: use "',
+  '一键新建出口': 'Create exit in one go',
+};
+Object.assign(EN, EN_V02937);
+
 const EN_V02910 = {
   "一键体检": "Health check",
   "面板 / Caddy / 出口 / Prometheus / Grafana / 磁盘，一次查完，每条都给结论和怎么办": "Panel, Caddy, exits, Prometheus, Grafana and disk — all at once, each with a verdict and what to do",
