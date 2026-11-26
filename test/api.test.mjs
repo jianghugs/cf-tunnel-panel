@@ -1108,6 +1108,8 @@ try {
   // 2026-11-26 幽灵连接器事故：停隧道时若这 5 秒里换过进程，旧条件永远不成立 → 旧子进程带旧 token 常驻
   const sTun = fs.readFileSync('src/core/tunnels.js', 'utf8');
   ok('停止隧道：SIGKILL 兜底不依赖 rt.proc', /p\.exitCode === null && p\.signalCode === null/.test(sTun) && !/if \(rt\.proc === p\) p\.kill/.test(sTun), '');
+  ok('重启隧道：先 SIGKILL 旧进程再起新的', /结束上一个 cloudflared/.test(sTun) && /old2\.kill\('SIGKILL'\)/.test(sTun), '');
+  ok('重启隧道：退役进程的 exit 不触发重试', /rt\.proc !== proc/.test(sTun) && /已被新进程取代/.test(sTun), '');
 }
 
   // ---- v0.29.0：审计口径 / CSP / 概览日志折叠 / 出口菜单 / 时长文案 / 窄屏栅格 ----

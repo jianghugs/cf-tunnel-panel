@@ -55,7 +55,13 @@ function startTunnel(id, opts = {}) {
   const tag = `[${t.name}] `;
   rt.fatal = false; // 每次启动都重新判断，别把上一次的致命标记永久带下去
   rt.throttled = false;
-  if (rt.proc) stopTunnel(id, true);
+  if (rt.proc) {
+    // 先 SIGKILL 再起新的：SIGTERM 是优雅退出，cloudflared 要好几秒才断开，
+    // 这期间新进程已经连上 Cloudflare，同一条隧道就会多出连接器（2026-11-26 事故形态）。
+    const old2 = rt.proc;
+    try { old2.kill('SIGKILL'); } catch {}
+    log(`${tag}结束上一个 cloudflared（pid ${old2.pid}）后再启动`, 'cloudflared');
+  }
 
   if (t.mode === 'named' && !t.token) {
     rt.status = 'error';
@@ -133,6 +139,12 @@ function startTunnel(id, opts = {}) {
   proc.stdout.on('data', onData);
   proc.stderr.on('data', onData);
   proc.on('exit', (code) => {
+    if (rt.proc && rt.proc !== proc) {
+      // 这个子进程已经被新进程取代了：不要再把 rt.proc 置空、也不要触发自动重试，
+      // 否则会多起一个连接器，越重启越多。
+      log(`${tag}旧 cloudflared 已退出（pid ${proc.pid}，已被新进程取代）`, 'cloudflared');
+      return;
+    }
     log(`${tag}cloudflared 退出 code=${code}`, 'cloudflared');
     const desired = rt.desired;
     rt.proc = null;
