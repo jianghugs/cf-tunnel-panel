@@ -30,7 +30,8 @@ SRC=${SRC:-$(cd "$(dirname "$0")/.." && pwd)}
 IMAGE=${IMAGE:-cf-tunnel-panel:local}
 PANEL_HOST=${PANEL_HOST:-}
 CADDY_ADMIN=${CADDY_ADMIN:-http://127.0.0.1:20190}
-CADDY_LISTEN=${CADDY_LISTEN:-:8080}
+# 默认只听回环：:8080 会绑 0.0.0.0，既可能撞宿主机上已占 8080 的进程，也等于把代理暴露到内网
+CADDY_LISTEN=${CADDY_LISTEN:-127.0.0.1:8080}
 UIDGID=${UIDGID:-1000:1000}
 READY_TIMEOUT=${READY_TIMEOUT:-60}
 # MOUNT_SRC=1（默认）把工作区的 src/tools/package.json 挂进容器：改完代码直接升级，不必构建镜像。

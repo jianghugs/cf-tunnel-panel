@@ -165,11 +165,14 @@ html:not([data-theme="light"]) .topbar{background:color-mix(in srgb,var(--panel)
 .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
 
-/* 侧栏「一键体检」快捷入口（和主导航区分：虚线框、淡一档） */
+/* 侧栏「一键体检」快捷入口：实线卡片 + 稍浅底色，和导航同一个语汇，不再像禁用态 */
 .nav-quick{display:flex;align-items:center;gap:8px;margin:10px 12px 4px;padding:7px 10px;
-  border:1px dashed var(--line);border-radius:var(--radius);color:var(--dim);font-size:var(--fs-sm);
-  text-decoration:none;transition:color .12s,border-color .12s,background .12s}
-.nav-quick:hover{color:var(--fg);border-color:var(--acc);background:var(--acc-bg);text-decoration:none}
+  border:1px solid var(--line);border-radius:var(--radius);background:var(--panel2);
+  color:var(--fg-2);font-size:var(--fs-sm);text-decoration:none;
+  transition:color .12s,border-color .12s,background .12s,transform .08s}
+.nav-quick .ico{font-size:13px;line-height:1;opacity:.9}
+.nav-quick:hover{color:var(--fg);border-color:var(--acc-line);background:var(--acc-bg);text-decoration:none}
+.nav-quick:active{transform:translateY(1px)}
 
 /* 规则里只对某个域名生效时，主机名做成徽标，别和路径挤在同一行 mono 里 */
 .badge-host{display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:var(--fs-2xs);line-height:1.5;

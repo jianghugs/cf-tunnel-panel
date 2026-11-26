@@ -443,7 +443,7 @@ function paintGrafana(d) {
     <div class="gpanel">
       ${p.title ? `<div class="gtitle">${esc(p.title)}</div>` : ''}
       <div class="gframe" data-i="${i}" style="height:${Number(p.h) || 220}px">
-        <div class="gskel"><span>正在连接 Grafana…</span></div>
+        <div class="gskel pending"><span>滚动到这里自动加载 Grafana</span></div>
       </div>
     </div>`).join('');
   // 懒加载：滚到可视区才开始拉 iframe；12 秒没 load 就当失败，给「重试」按钮，别留白板
