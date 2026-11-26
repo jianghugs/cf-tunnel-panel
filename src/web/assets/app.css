@@ -389,6 +389,12 @@ pre.log.collapsed{max-height:128px;min-height:0;overflow:hidden;
 .chart-x{position:relative;height:15px;margin-top:2px;font-size:var(--fs-2xs);color:var(--dim);
   font-variant-numeric:tabular-nums}
 .chart-x span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+/* Grafana 卡在 https 页面里没法嵌 http 时的替代块 */
+.gmixed{display:flex;flex-direction:column;gap:8px;align-items:flex-start;padding:14px 16px;
+  border:1px dashed var(--line);border-radius:var(--radius);background:var(--panel2);
+  font-size:var(--fs-sm);color:var(--fg-2)}
+.gmixed b{font-weight:600;color:var(--fg)}
+.gmixed span{line-height:1.65}
 .chart-sum{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;font-variant-numeric:tabular-nums;font-size:var(--fs-xs)}
 .chart-sum b{font-weight:600}
 .chart-legend{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}

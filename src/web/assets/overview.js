@@ -92,20 +92,31 @@ const CPAD = 1.2;   // 左右留白，避免首尾柱子被卡片边缘切掉
 
 function chartLabels(keys) {
   const n = Math.max(1, keys.length);
-  const step = n > 8 ? 2 : 1;
+  // 手机上绘图区只有几百 px，6 个「18:00 / 20:00 …」会叠在一起 → 最多标 3 个
+  const narrow = typeof window !== 'undefined' && window.innerWidth < 720;
+  const maxLabels = narrow ? 3 : 0;
+  const step = maxLabels ? Math.max(1, Math.ceil(n / maxLabels)) : (n > 8 ? 2 : 1);
   // 分钟级采样（相邻点间隔 < 10 分钟）只在整点标一次：否则同一个小时会被标两遍「3:00」
   const minuteLevel = n > 24 && keys.length > 1
     && (new Date(keys[1]).getTime() - new Date(keys[0]).getTime()) < 10 * 60e3;
   const seen = new Set();
+  const fmtLabel = (t) => {
+    const d = new Date(t);
+    // 窄屏 + 分钟级采样：只写「3:00」会连续重复，补上分钟才区分得开
+    return (minuteLevel && narrow)
+      ? `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+      : `${d.getHours()}:00`;
+  };
   const put = (t, i) => {
-    const label = `${new Date(t).getHours()}:00`;
+    const label = fmtLabel(t);
     if (seen.has(label)) return '';
     seen.add(label);
     return `<span style="left:${(((i + 0.5) / n) * 100).toFixed(2)}%">${label}</span>`;
   };
   let items = '';
   keys.forEach((t, i) => {
-    if (minuteLevel) { if (new Date(t).getMinutes() === 0) items += put(t, i); return; }
+    // 窄屏已经靠 step 控制数量，别再只挑整点（否则可能一个刻度都不剩）
+    if (minuteLevel && !narrow) { if (new Date(t).getMinutes() === 0) items += put(t, i); return; }
     if (i % step === 0) items += put(t, i);
   });
   if (!seen.size) {
@@ -438,7 +449,17 @@ function paintGrafana(d) {
   const key = JSON.stringify({ url: base.url, lan: g.lanUrl || '', dash: g.dashboard, theme: g.theme, panels: g.panels, mixed });
   if (box.dataset.key === key) return;
   box.dataset.key = key;
-  if (mixed) { box.innerHTML = ''; return; }
+  if (mixed) {
+    // 与其留一块白板，不如把「去哪儿看」讲清楚，并给一个能点的入口
+    box.innerHTML = '<div class="gmixed">'
+      + '<b>这个页面是 https，嵌不进来 http 的 Grafana</b>'
+      + '<span>浏览器会按混合内容拦截 iframe。给 Grafana 配个 https 域名就能嵌；只是想看图，直接在新窗口打开。</span>'
+      + (open && open.href
+        ? '<a class="btn ghost sm" href="' + esc(open.href) + '" target="_blank" rel="noopener noreferrer">在新窗口打开 Grafana ↗</a>'
+        : '')
+      + '</div>';
+    return;
+  }
   box.innerHTML = (g.panels || []).map((p, i) => `
     <div class="gpanel">
       ${p.title ? `<div class="gtitle">${esc(p.title)}</div>` : ''}

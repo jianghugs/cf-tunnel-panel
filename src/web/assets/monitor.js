@@ -48,7 +48,12 @@
     if (key === gKey) return;
     gKey = key;
     if (mixed) {
-      body.innerHTML = '<div class="hint warn">Grafana 地址是 <span class="mono">http://</span>，而当前页面是 https —— 浏览器会按混合内容拦截。把 Grafana 也挂到 https 域名（或改用局域网地址访问面板）。</div>';
+      // 混合内容拦的是 iframe，不是链接 → 至少给一个能点开的入口
+      body.innerHTML = '<div class="gmixed">'
+        + '<b>Grafana 是 http，当前页面是 https，iframe 会被浏览器拦掉</b>'
+        + '<span>把 Grafana 也挂到 https 域名就能嵌；只是想看图，直接在新窗口打开。</span>'
+        + '<a class="btn ghost sm" href="' + esc(g.url) + '" target="_blank" rel="noopener noreferrer">在新窗口打开 Grafana ↗</a>'
+        + '</div>';
       return;
     }
     body.innerHTML = '<div class="sub gnote">滚动到这里会自动加载 Grafana，第一次会慢一点。</div>' + panels.map((p) => `
