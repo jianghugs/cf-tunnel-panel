@@ -79,21 +79,30 @@ async function dockerContainers() {
 async function cfApi(pathname, { method = 'GET', body } = {}) {
   const cf = state.settings.cf || {};
   if (!cf.token) throw new Error('还没填 Cloudflare API Token（设置卡「Cloudflare API」里填）');
-  const r = await fetch(`https://api.cloudflare.com/client/v4${pathname}`, {
-    method,
-    headers: { Authorization: `Bearer ${cf.token}`, 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(15000),
-  });
-  const j = await r.json().catch(() => null);
-  if (!j) throw new Error(`Cloudflare API 返回的不是 JSON（HTTP ${r.status}）`);
-  if (!r.ok || j.success === false) {
-    const msg = (j.errors || []).map((e) => e.message).join('；') || `HTTP ${r.status}`;
+  const url = `https://api.cloudflare.com/client/v4${pathname}`;
+  const headers = { Authorization: `Bearer ${cf.token}`, 'Content-Type': 'application/json' };
+  const payload = body ? JSON.stringify(body) : undefined;
+  let status = 0;
+  let j = null;
+  try {
+    const r = await fetch(url, { method, headers, body: payload, signal: AbortSignal.timeout(15000) });
+    status = r.status;
+    j = await r.json().catch(() => null);
+  } catch (e) {
+    // 本机没有 v6 出口时 fetch 会假失败；再兜一次 IPv4（见 core/httpv4.js），还是不行才抛原错
+    const r4 = await getV4(url, { method, headers, body: payload, timeout: 15000, maxBytes: 512 * 1024 });
+    status = r4.status;
+    try { j = JSON.parse(r4.body); } catch { j = null; }
+  }
+  if (!j) throw new Error(`Cloudflare API 返回的不是 JSON（HTTP ${status}）`);
+  if (status >= 400 || j.success === false) {
+    const msg = (j.errors || []).map((e) => e.message).join('；') || `HTTP ${status}`;
     throw new Error(`Cloudflare API 失败：${msg}`);
   }
   return j.result;
 }
 
+const { getV4 } = require('./httpv4');
 const _state = require('./state');
 const state = _state.stateProxy;
 

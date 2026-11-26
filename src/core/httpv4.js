@@ -23,6 +23,7 @@ function getV4(url, opts) {
   const o = typeof opts === 'number' ? { timeout: opts } : (opts || {});
   const ms = Number(o.timeout) || 6000;
   const method = o.method || 'GET';
+  const body = o.body;
   const maxBytes = Number(o.maxBytes) || 256 * 1024;
   const headers = Object.assign({ 'user-agent': 'cf-tunnel-panel', accept: '*/*' }, o.headers || {});
   return new Promise((resolve, reject) => {
@@ -58,6 +59,7 @@ function getV4(url, opts) {
       });
       req.on('timeout', () => req.destroy(new Error(`IPv4 也超时（${ms}ms）`)));
       req.on('error', reject);
+      if (body != null) req.write(body);
       req.end();
     });
   });
