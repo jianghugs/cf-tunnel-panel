@@ -31,33 +31,7 @@ const dns = require('dns');
  * 每次都报 warn，久了就没人再看这条警告。所以第一次失败后再兜一次：
  * 自己解析 A 记录、按 IP 连、用 servername 带上 SNI，行为等同 curl -4。
  */
-function getV4(url, ms = 6000) {
-  return new Promise((resolve, reject) => {
-    let u;
-    try { u = new URL(url); } catch (e) { return reject(e); }
-    const isTls = u.protocol === 'https:';
-    const mod = isTls ? https : http;
-    const port = u.port || (isTls ? 443 : 80);
-    dns.lookup(u.hostname, { family: 4 }, (de, addr) => {
-      if (de || !addr) return reject(de || new Error('没有 A 记录'));
-      const req = mod.request({
-        host: addr,
-        port,
-        path: (u.pathname || '/') + (u.search || ''),
-        method: 'GET',
-        servername: isTls ? u.hostname : undefined,
-        headers: { host: u.hostname, 'user-agent': 'cfp-selfcheck', accept: '*/*' },
-        timeout: ms,
-      }, (res) => {
-        res.resume();
-        resolve({ status: res.statusCode || 0, ip: addr });
-      });
-      req.on('timeout', () => req.destroy(new Error(`IPv4 也超时（${ms}ms）`)));
-      req.on('error', reject);
-      req.end();
-    });
-  });
-}
+const { getV4 } = require('./httpv4');
 
 async function fetchText(url, ms = TIMEOUT, headers = {}) {
   const ctrl = new AbortController();

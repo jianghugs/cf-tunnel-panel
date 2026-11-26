@@ -74,6 +74,7 @@ const _bench = require('./core/bench');
 const { BENCH_MAX_MB, benchLocalOnce, coloOf, sendBenchBlob } = _bench;
 
 const _probe = require('./core/probe');
+const { getV4 } = require('./core/httpv4');
 const { curlSelf, probeUpstream, wsProbe } = _probe;
 
 const _integrations = require('./core/integrations');
@@ -1836,7 +1837,14 @@ async function handler(req, res) {
           const rr = await fetch(url, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(6000) });
           publicStatus = rr.status;
           if (rr.status < 500) break;
-        } catch (e) { publicStatus = 'x'; }
+        } catch (e) {
+          // 本机没有 v6 出口时 fetch 会假失败，再兜一次 IPv4（见 core/httpv4.js）
+          try {
+            const v4 = await getV4(url, { timeout: 6000 });
+            publicStatus = v4.status;
+            if (v4.status < 500) break;
+          } catch (e2) { publicStatus = 'x'; }
+        }
       }
       step('6. 公网自测', publicStatus && publicStatus !== 'x', publicStatus ? `${url} → ${publicStatus}` : `${url} 暂时连不上（DNS 可能还要 1~2 分钟）`);
       auditRecord({ actor: auth.who, ip: clientIpOf(req), method: 'POST', path: p, status: 200, action: '一键新建出口', target: `${name} → ${hostname}` });
@@ -1962,7 +1970,18 @@ async function handler(req, res) {
             colo: (() => { const c = r.headers.get('cf-ray') || ''; const m = /-([A-Z]{3})$/i.exec(c); return m ? m[1].toUpperCase() : ''; })(),
           });
         } catch (e) {
-          out.push({ path: path0, status: 0, ms: Date.now() - t0, error: e.message });
+          const coloOf = (c) => { const mm = /-([A-Z]{3})$/i.exec(String(c || '')); return mm ? mm[1].toUpperCase() : ''; };
+          try {
+            // 同上：IPv4 兜底，别让「本机没 v6 出口」被误判成缓存不通
+            const v4 = await getV4(base + path0, { timeout: 10000, headers: { 'Cache-Control': 'no-cache' } });
+            out.push({
+              path: path0, status: v4.status, ms: Date.now() - t0,
+              cache: v4.headers['cf-cache-status'] || '', age: v4.headers['age'] || '',
+              colo: coloOf(v4.headers['cf-ray']),
+            });
+          } catch (e2) {
+            out.push({ path: path0, status: 0, ms: Date.now() - t0, error: e.message });
+          }
         }
       }
       const hit = out.filter((x) => x.cache === 'HIT').length;

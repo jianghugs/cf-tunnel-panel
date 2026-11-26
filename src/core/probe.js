@@ -6,7 +6,9 @@
 
 const http=require('http'); const https=require('https'); const crypto=require('crypto');
  const net=require('net');
+const dns=require('dns');
 const path=require('path');
+const { getV4 } = require('./httpv4');
 
 const _state = require('./state');
 const state = _state.stateProxy;
@@ -21,8 +23,13 @@ async function probeUpstream(raw) {
   const host = u.hostname;
   const port = Number(u.port || (u.protocol === 'https:' ? 443 : 80));
   const t0 = Date.now();
+  // 先拿 A 记录再连：net.connect(hostname) 会优先用 AAAA，而本机通常没有 v6 出口，
+  // 结果是 2.5s 超时、误报「上游连不上」（curl 走 happy-eyeballs 不会）
+  const v4addr = await new Promise((resolve) => {
+    dns.lookup(host, { family: 4 }, (de, addr) => resolve(de ? '' : addr));
+  });
   const tcp = await new Promise((resolve) => {
-    const sock = net.connect({ host, port });
+    const sock = net.connect({ host: v4addr || host, port });
     const finish = (v) => { try { sock.destroy(); } catch {} resolve(v); };
     sock.setTimeout(2500, () => finish({ ok: false, error: '连接超时（2.5s 没响应）' }));
     sock.once('connect', () => finish({ ok: true }));
@@ -48,7 +55,17 @@ async function probeUpstream(raw) {
       note: r.status >= 500 ? 'TCP 通，但上游返回 5xx —— 服务可能没起好' : '',
     };
   } catch (e) {
-    return { ok: true, tcpMs, totalMs: Date.now() - t0, port, status: 0, note: 'TCP 通，但 HTTP 请求失败：' + e.message };
+    // 公网上游（比如 https://xx.trycloudflare.com）在本机没有 v6 出口时 fetch 会假失败，
+    // 再兜一次 IPv4（见 core/httpv4.js）；还是不行才按「TCP 通、HTTP 不通」报
+    try {
+      const v4 = await getV4(u.toString(), { timeout: 4000, headers: { 'User-Agent': 'cf-tunnel-panel-probe' } });
+      return {
+        ok: v4.status < 500, tcpMs, totalMs: Date.now() - t0, port, status: v4.status,
+        note: v4.status >= 500 ? 'TCP 通，但上游返回 5xx —— 服务可能没起好' : `已用 IPv4 直连（${v4.ip}）拿到响应`,
+      };
+    } catch (e2) {
+      return { ok: true, tcpMs, totalMs: Date.now() - t0, port, status: 0, note: 'TCP 通，但 HTTP 请求失败：' + e.message };
+    }
   }
 }
 
