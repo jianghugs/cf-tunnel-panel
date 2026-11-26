@@ -29,7 +29,7 @@ services:
       TZ: Asia/Shanghai
       PORT: "8090"           # 面板 UI
       CADDY_ADMIN: http://127.0.0.1:20190
-      CADDY_LISTEN: ":8080"  # 代理入口（隧道应指向这里）
+      CADDY_LISTEN: "127.0.0.1:8080"  # 代理入口（隧道应指向这里）
       LOG_STDOUT: "1"
       # 滚动升级用的第二个槽位：长期预留一个端口给"接班"的实例。
       # 主实例拿到这个 peer 才会把面板规则下发成「双上游 + 主动健康检查」，

@@ -1,0 +1,36 @@
+name: cf-tunnel-panel-test
+
+# 面板规则里 /site /db /term 指向的上游演示服务（原来是用 docker run 临时起的，这里固化成 compose）
+services:
+  site:
+    image: nginx:alpine
+    container_name: t-site
+    restart: unless-stopped
+    ports: ["127.0.0.1:8088:80"]
+    volumes: ["/opt/cf-tunnel-panel/test/site:/usr/share/nginx/html:ro"]
+  db:
+    image: mariadb:11
+    container_name: t-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: demo
+      MARIADB_ROOT_PASSWORD: "rootpw"
+    ports: ["127.0.0.1:3307:3306"]
+    volumes: ["t-db-data:/var/lib/mysql"]
+  adminer:
+    image: adminer:latest
+    container_name: t-adminer
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: 127.0.0.1:3307
+    ports: ["127.0.0.1:8082:8080"]
+  term:
+    image: tsl0922/ttyd:latest
+    container_name: t-ttyd
+    restart: unless-stopped
+    command: ["ttyd", "-p", "7681", "-c", "admin:term123", "bash"]
+    ports: ["127.0.0.1:7682:7681"]
+
+volumes:
+  t-db-data:
+    name: b530c2cacb5fc9863332b64cf61786205d8bcb56796d281b9316bc0e647d25a0
