@@ -2,6 +2,39 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.46
+
+## v0.29.46 — P0 五项运维收口
+
+这一版只动运维面，不改任何页面与业务逻辑。
+
+### 1. Prometheus 只抓一个目标（跟着活的那一色）
+原来 `tools/monitoring/prometheus/prometheus.yml` 把 `127.0.0.1:8090` 和 `127.0.0.1:8095` 都写死成 target，蓝绿只有一色在跑，另一条必然 `connection refused`，告警里天天挂一条假的 down。
+
+改成只抓 `127.0.0.1:8080` —— Caddy 上有一条 `host = 127.0.0.1` 的规则永远指向当前 leader 那一色，所以这个 target 天然跟着活槽位走。实测重启后 20s 内 `up = 1`。
+
+### 2. Caddy 访问日志按天回收
+原来只有 `roll_size_mb: 10 / roll_keep: 3`（按体积滚动，留 3 份）。低流量下旧档永远攒不到 10MB，于是「三个月前的日志还在」，而「最近三天的可能已经被删」。
+
+补 `roll_keep_for: '168h'`：无论体积，超过 7 天的滚动文件都清掉。
+
+### 3. Caddy 容器加 healthcheck
+panel 早就带 healthcheck，caddy 一直裸奔。现在用 admin 端口探活：
+`wget -q -O /dev/null http://127.0.0.1:20190/config/`，`interval 10s / timeout 3s / retries 6 / start_period 10s`。
+
+重建后 `docker ps` 里已是 `Up (healthy)`。注意：Caddy 启动只加载 bootstrap 配置，重建后需要 `POST /api/caddy/push` 把真实路由推回去（面板侧一有改动也会自动推）。
+
+### 4. 发版时回收旧镜像
+`tools/release.sh` 在「完成」前加一步：按创建时间倒序保留最近 3 个 `cf-tunnel-panel:<版本>` 镜像，其余 `docker rmi`（`:local` 不动）。之前积了 8 个 × 462MB ≈ 3.7GB。
+
+### 5. 快照日志搬出 /tmp 并轮转
+`git-snapshot.sh` 的输出原来写 `/tmp/cfp-git.log` —— 机器一重启就没了，也永远不轮转。现在落到 `data/logs/git-snapshot.log`，并加 `/etc/logrotate.d/cfp-snapshot`（weekly / rotate 4 / compress / copytruncate）。
+
+### 验证
+- `docker compose config` 渲染通过；`bash -n tools/release.sh`、`node --check src/core/caddy.js` 通过。
+- Prometheus 重启后单 target `up=1`；Caddy 重建后 `healthy`、`routeCount 7`、公网 `panel.jianghugs.shop/healthz` 200、`demo.jianghugs.shop` 200。
+- DOM 回归 236/236（预览实例 8181，含本版代码）。
+
 ## v0.29.45
 
 ## 修掉「工具箱 → 本机 Docker 容器：读不到 Docker」
