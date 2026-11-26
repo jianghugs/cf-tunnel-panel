@@ -34,7 +34,17 @@ function stopTunnel(id, silent = false) {
   rt.status = 'stopping';
   const p = rt.proc;
   try { p.kill('SIGTERM'); } catch {}
-  setTimeout(() => { try { if (rt.proc === p) p.kill('SIGKILL'); } catch {} }, 5000);
+  // 兜底必须无条件执行：如果这 5 秒里 startTunnel 又起了新进程，rt.proc 已经换人，
+  // 旧条件 `rt.proc === p` 就永远不成立，旧进程会带着旧 token 一直挂在 Cloudflare 上
+  // （2026-11-26 的「幽灵连接器」事故：同一个域名被多台机器/多个残留进程分流）。
+  setTimeout(() => {
+    try {
+      if (p.exitCode === null && p.signalCode === null) {
+        p.kill('SIGKILL');
+        log(`${tag}子进程 5 秒没有退出，已强制结束（pid ${p.pid}）`, 'cloudflared');
+      }
+    } catch {}
+  }, 5000);
   if (!silent) log(`${tag}已请求停止隧道`, 'cloudflared');
 }
 

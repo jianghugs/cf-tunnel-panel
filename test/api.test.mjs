@@ -378,15 +378,22 @@ ok('上游健康全部在线', (stNew.d.runtime.upstreams || []).every((u) => u.
 
 // 出口专属规则不能串域名：自己造一条绑在 main 出口的规则来测，不依赖用户当前的规则表
 {
-  const cur = (await j('/api/state')).d.state.routes;
-  const withProbe = [{ id: 'qa-scope', name: 'QA 专属规则', path: '/qascope', host: '', upstream: 'http://127.0.0.1:8091', strip: true, tunnelId: 'main' }, ...cur.filter((r) => r.id !== 'qa-scope')];
-  await j('/api/routes', { method: 'POST', body: { routes: withProbe } });
-  const mainUrl = (await j('/api/state')).d.runtime.tunnels.find((t) => t.id === 'main') || {};
-  const mainHost = String(mainUrl.publicUrl || mainUrl.url || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-  const other = await j('/api/match', { method: 'POST', body: { path: '/qascope/x', host: 'nope.invalid', method: 'GET' } });
-  ok('模拟匹配：专属出口规则不会串到别的域名', !(other.d.rule && other.d.rule.id === 'qa-scope'), (other.d.rule || {}).path || 'no-match');
-  const own = await j('/api/match', { method: 'POST', body: { path: '/qascope/x', host: mainHost, method: 'GET' } });
-  ok('模拟匹配：专属出口规则在自己的域名上命中', !!(own.d.rule && own.d.rule.id === 'qa-scope'), JSON.stringify(own.d).slice(0, 80));
+  // 不写死出口 id（main 出口可能已被删）：取一个真实存在、且有公网地址的命名出口来绑
+  const st0 = (await j('/api/state')).d;
+  const exRt = (st0.runtime.tunnels || []).find((t) => t.publicUrl || t.url) || {};
+  const exId = exRt.id || ((st0.state.tunnels || [])[0] || {}).id || '';
+  const exHost = String(exRt.publicUrl || exRt.url || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  const cur = st0.state.routes;
+  if (!exId || !exHost) {
+    ok('模拟匹配：专属出口规则在自己的域名上命中', true, '跳过：当前没有带公网地址的出口');
+  } else {
+    const withProbe = [{ id: 'qa-scope', name: 'QA 专属规则', path: '/qascope', host: '', upstream: 'http://127.0.0.1:8091', strip: true, tunnelId: exId }, ...cur.filter((r) => r.id !== 'qa-scope')];
+    await j('/api/routes', { method: 'POST', body: { routes: withProbe } });
+    const other = await j('/api/match', { method: 'POST', body: { path: '/qascope/x', host: 'nope.invalid', method: 'GET' } });
+    ok('模拟匹配：专属出口规则不会串到别的域名', !(other.d.rule && other.d.rule.id === 'qa-scope'), (other.d.rule || {}).path || 'no-match');
+    const own = await j('/api/match', { method: 'POST', body: { path: '/qascope/x', host: exHost, method: 'GET' } });
+    ok('模拟匹配：专属出口规则在自己的域名上命中', !!(own.d.rule && own.d.rule.id === 'qa-scope'), JSON.stringify(own.d).slice(0, 80));
+  }
   const back = (await j('/api/state')).d.state.routes.filter((r) => r.id !== 'qa-scope');
   await j('/api/routes', { method: 'POST', body: { routes: back } });
 }
@@ -1097,6 +1104,10 @@ try {
   ok('告警规则：含单出口错误率', /alert:\s*ExitErrorRateHigh/.test(sRules) && /cf_exit_errors_5m/.test(sRules), '');
   const sRulesMon = fs.readFileSync('tools/monitoring/prometheus/alerts.yml', 'utf8');
   ok('告警规则：监控栈副本已同步', sRulesMon === sRules, String(sRulesMon.length) + '/' + String(sRules.length));
+
+  // 2026-11-26 幽灵连接器事故：停隧道时若这 5 秒里换过进程，旧条件永远不成立 → 旧子进程带旧 token 常驻
+  const sTun = fs.readFileSync('src/core/tunnels.js', 'utf8');
+  ok('停止隧道：SIGKILL 兜底不依赖 rt.proc', /p\.exitCode === null && p\.signalCode === null/.test(sTun) && !/if \(rt\.proc === p\) p\.kill/.test(sTun), '');
 }
 
   // ---- v0.29.0：审计口径 / CSP / 概览日志折叠 / 出口菜单 / 时长文案 / 窄屏栅格 ----

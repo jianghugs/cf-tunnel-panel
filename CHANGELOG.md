@@ -2,6 +2,29 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.38
+
+**这次的 bug 是这轮事故的真正尾巴。**
+
+昨天 `panel.jianghugs.shop` 大约一半请求被一台跑着 frp 的陌生机器接走。根因是那条隧道有多个连接器；而本机为什么也会多出连接器，是 `stopTunnel()` 的兜底写错了：
+
+```js
+setTimeout(() => { if (rt.proc === p) p.kill('SIGKILL'); }, 5000);
+```
+
+如果这 5 秒里 `startTunnel()` 又起了新进程，`rt.proc` 已经换人，条件永远不成立 —— 旧 cloudflared 带着旧 token 一直挂在 Cloudflare 上（容器里一度 6 个 cloudflared，预期 2 个）。现在改成无条件兜底：5 秒后只要那个子进程还活着就 `SIGKILL`，并记一条日志。
+
+### 顺手修的
+
+- 回归断言：`src/core/tunnels.js` 里必须出现 `p.exitCode === null && p.signalCode === null`，且不再出现 `if (rt.proc === p) p.kill`。
+- 测试不再写死 `main` 出口（它已经被删了）：改成取当前真实存在、且有公网地址的出口来绑探针规则，没有就跳过并说明。
+
+### 现状
+
+- 两条出口：`a6cd34c6`（demo）、`5c795838`（面板专用，2026-11 新隧道）。
+- 公网 `/login` 抽样 20/20 正常，`/healthz` leader，`drift: false`。
+- 面板容器内 cloudflared 数量回到 2（用 `docker top` 可自查）。
+
 ## v0.29.37
 
 ### 面板里多了「怎么申请隧道 token」卡片
