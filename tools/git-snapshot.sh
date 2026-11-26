@@ -16,8 +16,10 @@
 # 只提交脱敏的声明式配置是默认行为，因为它可以安全地 share / 让 CI 复现。
 set -euo pipefail
 
-REPO="${REPO:-/mnt/sdb1/wechat_bot/cf-tunnel-panel-config}"          # 目标 git 仓库
-SRC="${SRC:-/mnt/sdb1/wechat_bot/cf-tunnel-panel/data}"             # 面板数据目录
+# 默认按「脚本所在项目」推导路径，换机器/换目录都不用改脚本
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO="${REPO:-$HERE-config}"                                        # 目标 git 仓库
+SRC="${SRC:-$HERE/data}"                                            # 面板数据目录
 STATE="${STATE:-0}"                                                  # 1 = 连 state.json 一起提交（含密钥）
 BRANCH="${BRANCH:-main}"
 
