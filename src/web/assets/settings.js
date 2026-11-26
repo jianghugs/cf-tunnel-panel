@@ -417,6 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   $('#btnSave').addEventListener('click', save);
+  if ($('#btnSave2')) $('#btnSave2').addEventListener('click', save);
   for (const id of ['#grafUrl', '#grafDash']) {
     const el = $(id);
     if (el) el.addEventListener('input', () => { syncGrafanaOpen(); if (window.__cfpSetUnsaved) window.__cfpSetUnsaved('settings', true); });

@@ -706,3 +706,26 @@ details.tut[open]>summary{margin-bottom:8px}
   .more-box{padding:10px 12px}
   .more-box select{flex:1 1 120px;min-width:0}
 }
+
+/* ===== 23 空态 / 分区标题 / 体检轴 / 吸底保存 ===== */
+.grid2.start { align-items: start; }
+.empty.empty-act { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 26px 18px; text-align: center; }
+.empty.empty-act .t { font-size: 13px; font-weight: 600; color: var(--fg); }
+.empty.empty-act .hint { max-width: 560px; }
+.empty.empty-inline { padding: 10px 0; min-height: 0; }
+pre.log:empty::before { content: attr(data-ph); display: block; color: var(--dim); font-family: inherit; }
+.sechd { margin: 16px 0 8px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 600; color: var(--dim); letter-spacing: .02em; }
+.sc-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--dim); margin-bottom: 4px; }
+.sc-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--dim); margin-top: 6px; }
+.sc-legend span::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; background: var(--line2); }
+.sc-legend .s-ok::before { background: var(--ok); }
+.sc-legend .s-warn::before { background: var(--warn); }
+.sc-legend .s-fail::before { background: var(--err); }
+.subnav .sngrp { display: inline-flex; align-items: center; font-size: 11px; color: var(--dim); letter-spacing: .04em; padding: 0 4px; }
+.subnav a.snh { width: 22px; justify-content: center; padding: 4px 0; border-radius: 999px; }
+.savebar { position: sticky; bottom: 12px; z-index: 5; display: flex; gap: 12px; align-items: center; padding: 10px 14px; margin-top: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow-pop); }
+.savebar .hint { flex: 1 1 auto; min-width: 0; background: transparent; border: 0; padding: 0; box-shadow: none; }
+details.longtail summary { cursor: pointer; color: var(--dim); font-size: 12px; }
+details.longtail[open] summary { margin-bottom: 6px; }
+.gnote { margin: 0 0 8px; }
+table { font-variant-numeric: tabular-nums; }

@@ -251,7 +251,7 @@ async function loadExitStats() {
     </tr>`).join('');
     const others = (d.other && d.other.hosts) || [];
     const otherRow = others.length
-      ? `<div class="hint" style="margin-top:8px">另外 ${d.other.count} 条请求打在不属于任何出口的域名上（例如 Cloudflare 后台手工加的其它主机名）：${others.map((x) => `<span class="mono">${esc(x.host)} ×${x.count}</span>`).join('、')}</div>`
+      ? `<details class="longtail" style="margin-top:8px"><summary>另外 ${d.other.count} 条请求打在不属于任何出口的域名上（点开看是哪些）</summary><div class="hint">${others.map((x) => `<span class="mono">${esc(x.host)} ×${x.count}</span>`).join('、')}</div></details>`
       : '';
     box.innerHTML = `<div class="tbl-wrap"><table class="stackable">
       <thead><tr><th>出口</th><th>域名</th><th>请求</th><th>5xx</th><th>4xx</th><th>p95</th><th>流量</th></tr></thead>

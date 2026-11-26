@@ -1,6 +1,6 @@
 <div class="topbar">
   <div class="t"><h1>工具箱</h1><div class="sub">本机容器、一次性分享、链路自测、Cloudflare API</div></div>
-  <div class="tools"><a class="sm" href="/metrics" target="_blank" rel="noreferrer">指标</a><a class="sm" href="/badge.svg" target="_blank" rel="noreferrer">徽章</a></div>
+  <div class="tools"><a class="sm" href="/metrics" target="_blank" rel="noreferrer" title="Prometheus 抓取用的指标端点（免登录）">Prometheus 指标</a><a class="sm" href="/badge.svg" target="_blank" rel="noreferrer" title="README 里用的状态徽章（SVG）">README 徽章</a></div>
 </div>
 
 <div class="content stack">
@@ -13,7 +13,7 @@
     <div class="bd tight" id="dockerBody"><div class="empty">读取中…</div></div>
   </div>
 
-  <div class="grid2">
+  <div class="grid2 start">
     <div class="card">
       <div class="hd"><h2>一次性分享链接</h2><div class="sub">到期自动从 Caddy 摘掉</div></div>
       <div class="bd stack">
@@ -35,14 +35,14 @@
           <div class="field"><label>Host / 域名</label><input id="curlHost" placeholder="留空按默认" /></div>
         </div>
         <div class="row"><button class="sm" id="btnCurl">发请求</button></div>
-        <pre class="log" id="curlOut" style="min-height:120px;border-radius:8px"></pre>
+        <pre class="log" id="curlOut" style="min-height:120px;border-radius:8px" data-ph="点「发请求」后，这里显示状态码、耗时和响应头"></pre>
         <div class="hint">下面这项专门验证 WebSocket：经本机 Caddy 走一次真实的 WS 握手，能到 101 就说明这条规则能承载网页终端 / Jupyter / 实时面板。</div>
         <div class="form-grid">
           <div class="field"><label>WS 路径</label><input id="wsPath" value="/term/ws" placeholder="/term/ws" /></div>
           <div class="field"><label>Host / 域名</label><input id="wsHost" placeholder="留空按默认" /></div>
         </div>
         <div class="row"><button class="sm" id="btnWsTest">测试 WebSocket 升级</button><span class="muted" id="wsMsg"></span></div>
-        <pre class="log" id="wsOut" style="min-height:80px;border-radius:8px"></pre>
+        <pre class="log" id="wsOut" style="min-height:80px;border-radius:8px" data-ph="点「测试 WebSocket 升级」后，这里显示握手结果"></pre>
       </div>
     </div>
   </div>
@@ -119,8 +119,8 @@
       </div>
       <div class="hint" id="cfTip">Token 权限只要 <b>Account · Cloudflare Tunnel · Edit</b> 和 <b>Zone · DNS · Edit</b> 两项就够；再加上 <b>Account · Account Settings · Read</b> 和 <b>Zone · Zone · Read</b>，面板才能自动列出账号和域名。</div>
       <div id="cfList"></div>
-      <div class="sub" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
-        <b>边缘缓存</b>：静态资源（/assets/*）本机已下发 <code class="mono">Cache-Control: public, max-age=300</code> +
+      <div class="sechd">边缘缓存</div>
+      <div class="sub">静态资源（/assets/*）本机已下发 <code class="mono">Cache-Control: public, max-age=300</code> +
         <code class="mono">Cloudflare-CDN-Cache-Control: max-age=86400</code>。要让 Cloudflare 真缓存，还需要一条 Cache Rule
         （需 Token 带 <code class="mono">Zone → Cache Rules → Edit</code>；没有权限就去后台手建，表达式一样）。
       </div>
@@ -131,6 +131,7 @@
         <span class="muted" id="cacheRuleMsg"></span>
       </div>
       <pre class="out hidden" id="cacheRuleOut"></pre>
+      <div class="sechd">清理与预热</div>
       <div class="row" style="margin-top:8px;align-items:center;flex-wrap:wrap">
         <input id="purgeUrls" placeholder="要清理的 URL（逗号分隔，留空 = 清空整个域名）" style="flex:1;min-width:260px" />
         <button class="sm ghost" id="btnPurge">清理边缘缓存</button>
@@ -155,6 +156,7 @@
         </div>
         <div class="hint" style="margin-top:8px">加完 5~15 秒生效。<b>ssh://</b> 只做 TCP 转发，浏览器打不开，客户端用 <span class="mono">cloudflared access ssh --hostname 域名</span>。指向 <span class="mono">127.0.0.1:8090</span> 会绕开 Caddy，规则和认证全部失效，只建议给面板自己用。</div>
       </div>
+      <div class="sechd">DNS 记录（只建 CNAME）</div>
       <div class="row" style="margin-top:6px">
         <div class="field" style="flex:1"><label>域名</label><input id="cfDnsName" placeholder="panel.example.com" /></div>
         <div class="field" style="flex:1"><label>指向哪条隧道</label><select id="cfDnsTunnel"><option value="">最近创建的那条</option></select></div>

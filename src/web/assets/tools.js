@@ -10,7 +10,14 @@ async function loadDocker() {
   try {
     const d = await api('/api/docker/containers');
     if (!d.available) {
-      box.innerHTML = `<div class="hint">读不到 Docker：${esc(d.note || '没有挂载 /var/run/docker.sock')}</div>`;
+      box.innerHTML = `<div class="empty empty-act">
+          <div class="t">读不到 Docker</div>
+          <div class="hint">${esc(d.note || '面板容器没有挂载 /var/run/docker.sock，所以看不到本机容器。')}</div>
+          <div class="sub">要修：给 panel 服务加上 <span class="mono">/var/run/docker.sock:/var/run/docker.sock:ro</span> 挂载，再 <span class="mono">docker compose up -d</span>；不修也不影响其它功能。</div>
+          <button class="sm ghost" data-dockretry="1">重试</button>
+        </div>`;
+      const rb2 = box.querySelector('[data-dockretry]');
+      if (rb2) rb2.addEventListener('click', () => loadDocker());
       return;
     }
     const rows = (d.containers || []).map((c) => `<tr>
@@ -30,7 +37,13 @@ async function loadShares() {
   try {
     const d = await api('/api/shares');
     const list = d.shares || [];
-    if (!list.length) { box.innerHTML = '<div class="empty">还没有分享链接</div>'; return; }
+    if (!list.length) {
+      box.innerHTML = `<div class="empty empty-act">
+          <div class="t">还没有分享链接</div>
+          <div class="hint">填好上面三项点「生成链接」，会得到一个带 token 的临时地址。到期会自动从 Caddy 摘掉，不用手动删。</div>
+        </div>`;
+      return;
+    }
     box.innerHTML = list.map((s) => `<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding:8px 0">
         <div class="grow">
           <div><strong>${esc(s.name)}</strong> <span class="tag">${esc(s.upstream)}</span></div>

@@ -9,9 +9,13 @@
     <span class="muted" id="searchHint"></span>
   </div>
   <nav class="subnav" aria-label="设置分区">
-    <a href="#sec-tunnelhelp">怎么申请隧道</a><a href="#sec-site">站点</a><a href="#sec-maint">维护</a><a href="#sec-security">安全</a><a href="#sec-notify">通知</a>
+    <span class="sngrp">常用</span>
+    <a href="#sec-site">站点</a><a href="#sec-maint">维护</a><a href="#sec-security">安全</a><a href="#sec-notify">通知</a>
     <a href="#sec-login">登录</a><a href="#sec-sessions">会话</a><a href="#sec-viewer">只读</a><a href="#sec-totp">双因子</a>
-    <a href="#sec-operator">运维</a><a href="#sec-nhist">通知记录</a><a href="#sec-backup">备份</a><a href="#sec-grafana">监控嵌入</a><a href="#sec-io">导入导出</a><a href="#sec-code">配置即代码</a><a href="#sec-about">关于</a>
+    <a href="#sec-operator">运维</a><a href="#sec-nhist">通知记录</a>
+    <span class="sngrp">进阶</span>
+    <a href="#sec-backup">备份</a><a href="#sec-grafana">监控嵌入</a><a href="#sec-io">导入导出</a><a href="#sec-code">配置即代码</a><a href="#sec-about">关于</a>
+    <a href="#sec-tunnelhelp" class="snh" title="怎么申请隧道 token">?</a>
   </nav>
   <div id="sec-site" class="card">
     <div class="hd"><h2>站点</h2><div class="sub">只影响面板与 Caddy 的对外行为</div></div>
@@ -314,4 +318,6 @@
       <div class="hint">面板要走 HTTPS 就挂证书并设置 <span class="mono">PANEL_TLS_CERT</span> / <span class="mono">PANEL_TLS_KEY</span> 重启容器；证书生成命令见 README §10。</div>
     </div>
   </div>
+
+  <div class="savebar"><button class="primary" id="btnSave2">保存设置</button><span class="hint">改完记得保存 —— 保存后才会下发给 Caddy / cloudflared。</span></div>
 </div>

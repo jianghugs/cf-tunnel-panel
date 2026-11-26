@@ -51,7 +51,7 @@
       body.innerHTML = '<div class="hint warn">Grafana 地址是 <span class="mono">http://</span>，而当前页面是 https —— 浏览器会按混合内容拦截。把 Grafana 也挂到 https 域名（或改用局域网地址访问面板）。</div>';
       return;
     }
-    body.innerHTML = panels.map((p) => `
+    body.innerHTML = '<div class="sub gnote">滚动到这里会自动加载 Grafana，第一次会慢一点。</div>' + panels.map((p) => `
       <div class="field"><label>${esc(p.title || ('panel ' + p.panelId))}</label>
         <iframe class="chart" style="border:1px solid var(--line);border-radius:10px;width:100%;height:${Number(p.h) || 200}px"
           src="${esc(grafanaUrl(g, p))}" loading="lazy" referrerpolicy="no-referrer"></iframe></div>`).join('');
@@ -295,7 +295,7 @@ async function load() {
               : `<button class="sm ghost" data-mute="${esc(a.name)}">静默 1h</button>`}</td>
           </tr>`).join('')}</tbody></table></div>${
             mutedCount ? `<div class="sub" style="margin-top:6px">已静默 ${mutedCount} 条：只影响本页提醒，Prometheus 侧照常记录与评估。</div>` : ''}`
-        : '<div class="empty">当前没有告警 —— 这是好事</div>';
+        : '<div class="empty empty-inline">当前没有告警 —— 这是好事，Prometheus 里的规则都还绿着。</div>';
     } catch (e) {
       tb.innerHTML = `<div class="hint err">${esc(e.message)}</div>`;
     }

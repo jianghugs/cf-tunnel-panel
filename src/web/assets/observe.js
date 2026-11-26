@@ -72,7 +72,7 @@ function renderAccess() {
       <span class="tag warn">4xx ${st('4xx')}</span>
       <span class="tag err">5xx ${st('5xx')}</span>
       ${filtering ? `<span class="tag info">筛选后 ${list.length} 条</span>` : ''}
-      ${(s.topPaths || []).slice(0, 3).map((x) => `<span class="tag">${esc(x.k)} × ${x.v}</span>`).join('')}
+      ${(s.topPaths || []).slice(0, 3).map((x) => `<span class="tag" title="最近窗口里这个路径命中 ${esc(String(x.v))} 次">${esc(x.k)} · ${x.v} 次</span>`).join('')}
     </div>
     <div class="tbl-wrap">
       <table class="stackable"><thead><tr><th>时间</th><th>方法</th><th>路径</th><th>状态</th><th>耗时</th><th>来源 IP</th></tr></thead>
@@ -299,11 +299,11 @@ async function loadRouteStats() {
         <td><strong>${esc(r.name)}</strong><div class="muted mono" style="font-size:11px">${esc(r.path || '/')}${r.host ? ' · ' + esc(r.host) : ''}</div></td>
         <td>${r.count}</td>
         <td>${errTag}<div class="muted" style="font-size:11px">${r.errRate}% 错误</div></td>
-        <td>${r.p50} / <strong>${r.p95}</strong>${r.max ? ` / ${r.max}` : ''}</td>
+        <td class="mono" data-label="延迟">P50 ${r.p50} · P95 <strong>${r.p95}</strong>${r.max ? ` · 最慢 ${r.max}` : ''} <span class="muted">ms</span></td>
         <td>${(r.bytes / 1024).toFixed(0)} KB</td>
       </tr>`;
     }).join('');
-    box.innerHTML = `<div class="tbl-wrap"><table class="stackable"><thead><tr><th>规则</th><th>命中</th><th>结果</th><th>P50 / P95 / 最慢 (ms)</th><th>流量</th></tr></thead><tbody>${rows}</tbody></table></div>`
+    box.innerHTML = `<div class="tbl-wrap"><table class="stackable"><thead><tr><th>规则</th><th>命中</th><th>结果</th><th>延迟</th><th>流量</th></tr></thead><tbody>${rows}</tbody></table></div>`
       + (d.unmatched.count ? `<div class="hint warn">另有 ${d.unmatched.count} 个请求没有命中任何规则（其中 ${d.unmatched.s4} 个 4xx、${d.unmatched.s5} 个 5xx），通常是被兜底 404 接住了。</div>` : '');
   } catch (e) {
     box.innerHTML = `<div class="hint warn">${esc(e.message)}</div>`;
