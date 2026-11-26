@@ -294,6 +294,15 @@ function buildCaddyConfig() {
     ],
   });
 
+  // 安全响应头：给每条路由前置一个 headers 处理器。
+  // - 用「同一路由内前置」而不是新增一条路由，是为了不改 routes 条数（pusher 用 len-1 记 routeCount）
+  // - HSTS 只在 https 下生效（浏览器忽略 http 上的 HSTS），内网裸 IP 访问不受影响
+  const SEC_RESP = { set: { 'Strict-Transport-Security': ['max-age=15552000'] } };
+  for (const r of routes) {
+    if (!Array.isArray(r.handle)) continue;
+    r.handle.unshift({ handler: 'headers', response: SEC_RESP });
+  }
+
   return {
     // admin 监听地跟着 CADDY_ADMIN 走：默认 20190（非常用端口），换了环境变量这里也跟着换，
     // 否则每次下发配置都会把 Caddy 拉回硬编码的 2019。

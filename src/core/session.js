@@ -380,8 +380,19 @@ function clearCookieHeader() {
 
 /** 请求是不是走 HTTPS（经过 Caddy/Cloudflare 时看转发头） */
 function isSecure(req) {
-  const proto = String((req.headers && req.headers['x-forwarded-proto']) || '').split(',')[0].trim();
-  if (proto) return proto === 'https';
+  const h = (req && req.headers) || {};
+  // 先看 Cloudflare 的 CF-Visitor（{"scheme":"https"}）：这才是访客浏览器的真实协议。
+  // 走隧道时 Caddy 到面板这一跳是明文 http，光看 x-forwarded-proto 会把 https 访问判成 http，
+  // 于是会话 cookie 少了 Secure 标志。
+  const visitor = String(h['cf-visitor'] || '');
+  if (visitor) {
+    try {
+      const v = JSON.parse(visitor);
+      if (v && v.scheme) return String(v.scheme).toLowerCase() === 'https';
+    } catch {}
+  }
+  const proto = String(h['x-forwarded-proto'] || '').split(',')[0].trim();
+  if (proto) return proto.toLowerCase() === 'https';
   return !!(req.socket && req.socket.encrypted);
 }
 
