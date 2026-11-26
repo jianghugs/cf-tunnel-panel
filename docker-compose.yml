@@ -31,6 +31,10 @@ services:
       CADDY_ADMIN: http://127.0.0.1:20190
       CADDY_LISTEN: "127.0.0.1:8080"  # 代理入口（隧道应指向这里）
       LOG_STDOUT: "1"
+      # Node 22 默认先用 IPv6 连外网。本机与容器都没有 IPv6 出口，而 demo/panel 两个
+      # 域名的 DNS 同时给 A+AAAA，内置 fetch 挑中 AAAA 就卡到超时，体检的 exit-*
+      # 两项会误报「请求失败：fetch failed」。强制 IPv4 优先即可。
+      NODE_OPTIONS: "--dns-result-order=ipv4first"
       # 滚动升级用的第二个槽位：长期预留一个端口给"接班"的实例。
       # 主实例拿到这个 peer 才会把面板规则下发成「双上游 + 主动健康检查」，
       # 新实例在 8095 起来后先当 standby，老实例退出时 Caddy 自动把流量切过去。

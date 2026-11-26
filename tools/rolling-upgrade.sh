@@ -146,7 +146,7 @@ if [ -z "$CUR_NAME" ]; then
   docker rm -f "$BASE-$CUR_COLOR" >/dev/null 2>&1 || true
   docker run -d --name "$BASE-$CUR_COLOR" \
     --network host --user "$UIDGID" --restart unless-stopped \
-    -e PORT="$CUR" -e LOG_STDOUT=1 -e TZ=Asia/Shanghai \
+    -e PORT="$CUR" -e LOG_STDOUT=1 -e TZ=Asia/Shanghai -e NODE_OPTIONS=--dns-result-order=ipv4first \
     -e CADDY_ADMIN="$CADDY_ADMIN" -e CADDY_LISTEN="$CADDY_LISTEN" \
     -e PANEL_INSTANCE="$CUR_COLOR-$CUR-$(date +%s)" \
     -e PANEL_SLOT_PEERS="$NEXT" \
@@ -171,7 +171,7 @@ say "== 1/4 起新实例 $NEXT_NAME（:$NEXT）=="
 docker rm -f "$NEXT_NAME" >/dev/null 2>&1 || true
 docker run -d --name "$NEXT_NAME" \
   --network host --user "$UIDGID" --restart unless-stopped \
-  -e PORT="$NEXT" -e LOG_STDOUT=1 -e TZ=Asia/Shanghai \
+  -e PORT="$NEXT" -e LOG_STDOUT=1 -e TZ=Asia/Shanghai -e NODE_OPTIONS=--dns-result-order=ipv4first \
   -e CADDY_ADMIN="$CADDY_ADMIN" -e CADDY_LISTEN="$CADDY_LISTEN" \
   -e PANEL_INSTANCE="$NEXT_COLOR-$NEXT-$(date +%s)" \
   -e PANEL_SLOT_PEERS="$CUR" \

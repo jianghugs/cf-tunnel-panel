@@ -91,6 +91,25 @@ NODE_PATH=/tmp/jsd/node_modules node test/dom.test.cjs
 node test/e2e-caddy.mjs
 ```
 
+**宿主机没有 node 时用 docker 跑**（本机即如此：`node`/`npm`/`caddy` 都没有，`/tmp/jsd` 里的依赖也会丢）：
+
+```bash
+# 依赖装一次（bcryptjs/qrcode 是运行时依赖，缺了 API 测试会挂 5 条 MODULE_NOT_FOUND）
+docker run --rm -v /tmp/jsd:/j -w /j node:22-alpine sh -c 'echo "{\"name\":\"jsd\",\"private\":true}" > package.json && npm i bcryptjs qrcode jsdom@31'
+
+# API：--network host 必须（测试要连 127.0.0.1:8090）
+docker run --rm --network host -v "$PWD":/w -v /tmp/jsd:/j -w /w \
+  -e NODE_PATH=/j/node_modules -e PANEL_URL=http://127.0.0.1:8090 -e PANEL_PASS='<面板口令>' \
+  node:22-alpine node test/api.test.mjs
+
+# DOM：同样要 --network host；漏掉 PANEL_PASS 会停在登录页，harness 空指针直接崩
+docker run --rm --network host -v "$PWD":/w -v /tmp/jsd:/j -w /w \
+  -e NODE_PATH=/j/node_modules -e PANEL_PASS='<面板口令>' \
+  node:22-alpine node test/dom.test.cjs
+```
+
+基线（2026-11-26，v0.29.39）：API 367/367、DOM 236/236。第三套 `e2e-caddy.mjs` 会临时改写线上规则与两个维护开关（自带快照/还原），要跑先想清楚。
+
 已知假失败模式：改完代码刚重启时，固定 `sleep` 等待会抖 → 用 `waitFor(fn, 8000)`（`test/dom.test.cjs` 里已有）。
 `jsdom` 的 `localStorage` 每次 `open()` 都是新的，别指望跨「刷新」保留状态。
 
