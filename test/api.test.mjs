@@ -108,9 +108,16 @@ const tl0 = (await j('/api/tunnels')).d.tunnels.length;
 const created = await j('/api/tunnels', { method: 'POST', body: { name: 'API 测试出口', mode: 'quick', origin: 'http://127.0.0.1:8080' } });
 ok('创建出口 200', created.status === 200 && !!created.d.id, JSON.stringify(created.d).slice(0, 80));
 const nid = created.d.id;
-await sleep(14000);
-const tl1 = await j('/api/tunnels');
-const rt1 = tl1.d.tunnels.find((t) => t.id === nid);
+// 等快速隧道离开 starting（起不来时 Cloudflare 通常几秒内就给 429/退避），最长 14 秒。
+// 固定 sleep(14000) 是这套测试里最大的一笔固定开销，改成轮询后正常路径能省 10 秒左右。
+let rt1 = null;
+for (let i = 0; i < 28; i += 1) {
+  await sleep(500);
+  const tl = await j('/api/tunnels');
+  rt1 = tl.d.tunnels.find((t) => t.id === nid) || null;
+  if (rt1 && rt1.status !== 'starting') break;
+}
+if (!rt1) rt1 = (await j('/api/tunnels')).d.tunnels.find((t) => t.id === nid);
 const throttled = rt1 && /限流/.test(String(rt1.lastError || ''));
 // 快速隧道能不能起来取决于 Cloudflare 当时是否给额度（429 很常见），
 // 所以这里不硬要求 running：只要「要么起来了，要么留下了一条人话原因」即算通过。
