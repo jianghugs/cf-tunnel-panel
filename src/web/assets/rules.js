@@ -7,6 +7,7 @@ let rules = [];
 let selectedExit = localStorage.getItem('cfp-scope') || '';
 let filterText = '';
 let dirty = false;
+const openRules = new Set(); // 展开中的规则（默认全部收起）
 
 const TEMPLATES = [
   { name: '静态网站（nginx:80）', path: '/site', upstream: 'http://127.0.0.1:8088', strip: true },
@@ -51,10 +52,13 @@ function ruleHtml(r, i) {
   const scoped = !!r.tunnelId;
   const auth = r.basicAuth || {};
   const off = r.enabled === false;
-  return `<div class="rule${off ? ' off' : ''}" data-i="${i}" draggable="true">
+  const openKey = r.id || ('i' + i);
+  const open = openRules.has(openKey);
+  return `<div class="rule${off ? ' off' : ''}${open ? ' open' : ''}" data-i="${i}" draggable="true">
     <div class="rule-h">
       <span class="drag" title="按住拖动可以调整顺序（顺序就是优先级：上面的先命中）" aria-label="拖动排序">⠿</span>
       <span class="idx">${i + 1}</span>
+      <button class="sm ghost rule-tg" data-act="tg" aria-expanded="${open ? 'true' : 'false'}" title="展开 / 收起这条规则的详细设置">${open ? '▾' : '▸'}</button>
       <input data-k="name" value="${esc(r.name || '')}" placeholder="规则名字（可留空）" style="max-width:200px" />
       <span class="tag ${scoped ? 'acc' : ''}">${scoped ? '专属' : '全局'}</span>
       ${off ? '<span class="tag warn" title="这条规则已停用，访客不会命中，但它还留在列表里">已停用</span>' : ''}
@@ -338,6 +342,7 @@ function addRule(tpl) {
     if (tpl.sensitive) r.note = '这条会暴露数据库/终端，建议设置基础认证或来源 IP 白名单';
   }
   rules.push(r);
+  openRules.add(r.id);
   markDirty();
   render();
   const el = $('#ruleList .rule[data-i="' + (rules.length - 1) + '"]');
@@ -430,6 +435,21 @@ document.addEventListener('DOMContentLoaded', () => {
     toast('顺序已调整（记得点保存生效）', 'ok');
   });
 
+  function toggleRule(card, force) {
+    if (!card) return;
+    const i = parseInt(card.dataset.i, 10);
+    const r = rules[i];
+    const key = (r && r.id) || ('i' + i);
+    const isOpen = typeof force === 'boolean' ? force : !card.classList.contains('open');
+    card.classList.toggle('open', isOpen);
+    if (isOpen) openRules.add(key); else openRules.delete(key);
+    const tg = card.querySelector('[data-act="tg"]');
+    if (tg) {
+      tg.textContent = isOpen ? '▾' : '▸';
+      tg.setAttribute('aria-expanded', String(isOpen));
+    }
+  }
+
   $('#ruleList').addEventListener('click', async (e) => {
     const mb = e.target.closest('[data-menu]');
     if (mb) {
@@ -440,11 +460,20 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     const b = e.target.closest('[data-act]');
-    if (!b) return;
+    if (!b) {
+      const hd = e.target.closest('.rule-h');
+      if (hd && !e.target.closest('input,select,textarea,a,[data-menu]')) toggleRule(hd.parentNode);
+      return;
+    }
     const card = b.closest('.rule');
     const i = parseInt(card.dataset.i, 10);
     const action = b.dataset.act;
+    if (action === 'tg') {
+      toggleRule(card);
+      return;
+    }
     if (action === 'del') {
+      if (rules[i] && rules[i].id) openRules.delete(rules[i].id);
       if (!confirm('删除这条规则？')) return;
       syncFromDom(); rules.splice(i, 1); markDirty(); render();
       return;
@@ -541,6 +570,16 @@ document.addEventListener('DOMContentLoaded', () => {
     markDirty(); render();
   });
 
+  const moreBtn = $('#btnMore');
+  if (moreBtn) {
+    moreBtn.addEventListener('click', () => {
+      const box = $('#moreBox');
+      if (!box) return;
+      const open = !box.classList.toggle('hidden');
+      moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      moreBtn.textContent = open ? '更多 ▴' : '更多 ▾';
+    });
+  }
   $('#btnImport').addEventListener('click', () => {
     const box = $('#importBox');
     box.classList.toggle('hidden');

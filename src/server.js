@@ -234,7 +234,12 @@ async function handler(req, res) {
   // 语言包 + 字典：必须是外部脚本（CSP 不允许内联），也必须在鉴权之前（登录页要用）
   if (p === '/boot.js' && (req.method === 'GET' || req.method === 'HEAD')) {
     const lg = langOf(req);
-    const js = `window.__CFP_LANG=${JSON.stringify(lg)};window.__CFP_DICT=${_i18n.clientDict()};`;
+    // 首帧主题：放在 boot.js 里（CSP 不允许内联），页面把它放在样式表之前加载，
+    // 这样 localStorage 里存的主题在第一次绘制前就已经贴到 <html data-theme> 上，不会闪一下。
+    const js = 'try{var t=localStorage.getItem("cfp-theme");'
+      + 'if(!t)t=(window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches)?"light":"dark";'
+      + 'document.documentElement.setAttribute("data-theme",t)}catch(e){}'
+      + `window.__CFP_LANG=${JSON.stringify(lg)};window.__CFP_DICT=${_i18n.clientDict()};`;
     const buf = Buffer.from(js);
     const ae = String(req.headers['accept-encoding'] || '');
     const gz = buf.length > 1024 && /gzip/.test(ae);

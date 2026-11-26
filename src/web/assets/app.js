@@ -86,6 +86,13 @@ const CMDS = [
   { t: '一键体检', s: '体检 自检 selfcheck 检查 排障', h: '/monitor#check', act: 'check' },
   { t: '重新预热边缘缓存', s: '预热 warm 缓存 cloudflare 资源', h: '', act: 'warm' },
   { t: '重启全部出口', s: '重启 restart 出口 隧道 cloudflared', h: '', act: 'restartTunnels' },
+  // 概览页原来的「快捷动作」按钮，统一收进这里
+  { t: '新建出口', s: '新建 出口 tunnels cloudflared 隧道', h: '/tunnels' },
+  { t: '新建规则', s: '新建 规则 rules 分流', h: '/rules' },
+  { t: '一次性分享链接', s: '一次性 分享 share tools', h: '/tools' },
+  { t: '访问统计', s: '访问 统计 observe 日志', h: '/observe' },
+  { t: '维护模式 / 备份', s: '维护 maintenance 备份 backup settings', h: '/settings' },
+  { t: 'Prometheus 指标', s: 'metrics prometheus 指标 抓取', h: '/metrics' },
 ];
 
 /** 命令面板里的「动作项」：直接在面板里执行，不跳页面。返回一句提示。 */
@@ -401,6 +408,8 @@ function initTheme() {
   if (lo) lo.addEventListener('click', doLogout);
   const pal = $('#btnPalette');
   if (pal) pal.addEventListener('click', () => openPalette());
+  const qp = $('#btnQuickPal');
+  if (qp) qp.addEventListener('click', () => openPalette());
   const b = $('#btnTheme');
   if (b) b.addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';

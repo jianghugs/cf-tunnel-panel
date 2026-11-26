@@ -16,16 +16,20 @@
       <span class="sub" id="scopeTag"></span>
       <div class="right">
         <input id="ruleFilter" placeholder="搜名字 / 路径 / 上游 / 域名" style="width:190px" aria-label="过滤规则" />
-        <select id="hitHours" style="width:auto" aria-label="命中统计时间窗" title="规则卡上的命中/错误/p95 按这个时间窗统计">
-          <option value="1">最近 1 小时</option>
-          <option value="6" selected>最近 6 小时</option>
-          <option value="24">最近 24 小时</option>
-        </select>
-        <select id="tplSel" style="width:auto"><option value="">从模板添加…</option></select>
         <button class="sm" id="btnAddRule">＋ 添加规则</button>
-        <button class="sm ghost" id="btnImport" aria-expanded="false">粘贴导入</button>
+        <button class="sm ghost" id="btnMore" aria-expanded="false" aria-controls="moreBox">更多 ▾</button>
         <span class="tag warn hidden" id="rulesDirty">有未保存的改动</span>
       </div>
+    </div>
+    <div id="moreBox" class="more-box hidden">
+      <span class="sub">命中统计</span>
+      <select id="hitHours" aria-label="命中统计时间窗" title="规则卡上的命中/错误/p95 按这个时间窗统计">
+        <option value="1">最近 1 小时</option>
+        <option value="6" selected>最近 6 小时</option>
+        <option value="24">最近 24 小时</option>
+      </select>
+      <select id="tplSel"><option value="">从模板添加…</option></select>
+      <button class="sm ghost" id="btnImport" aria-expanded="false">粘贴导入</button>
     </div>
     <div class="bd">
       <div id="importBox" class="hidden" style="margin-bottom:10px">

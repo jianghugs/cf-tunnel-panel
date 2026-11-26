@@ -26,7 +26,7 @@
       <div class="x" id="statCaddyX">&nbsp;</div>
     </div>
     <div class="card stat">
-      <div class="k">最近请求</div>
+      <div class="k">请求总数</div>
       <div class="v" id="statReq">–</div>
       <div class="x" id="statReqX">&nbsp;</div>
     </div>
@@ -98,17 +98,8 @@
     <pre class="log collapsed" id="logBox" aria-live="polite"></pre>
   </div>
 
-  <div class="card">
-    <div class="hd"><h2>快捷动作</h2></div>
-    <div class="bd">
-      <div class="row">
-        <a class="btn" href="/tunnels">＋ 新建出口</a>
-        <a class="btn" href="/rules">＋ 新建规则</a>
-        <a class="btn" href="/tools">一次性分享</a>
-        <a class="btn" href="/observe">访问统计</a>
-        <a class="btn" href="/settings">维护模式 / 备份</a>
-        <a class="btn" href="/metrics" target="_blank" rel="noreferrer">Prometheus 指标</a>
-      </div>
-    </div>
+  <div class="quickline">
+    <span class="hint">新建出口、新建规则、一次性分享、访问统计、维护模式 / 备份、Prometheus 指标 —— 都收进了命令面板，不用翻到页尾找按钮。</span>
+    <button class="btn ghost" type="button" id="btnQuickPal">打开命令面板 ⌘K</button>
   </div>
 </div>

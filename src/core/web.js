@@ -44,6 +44,7 @@ function pageShell(active, body, lang = 'zh') {
   <meta name="theme-color" content="#1b7f5a" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${i18n.t(lang, activePage.title)} · ${title}</title>
+<script src="/boot.js?v=${ASSET_V}"></script>
 <link rel="stylesheet" href="${AV('app.css')}">
 <link rel="icon" href="/badge.svg" type="image/svg+xml">
 </head>
@@ -71,7 +72,6 @@ function pageShell(active, body, lang = 'zh') {
 ${body}
   </main>
 </div>
-<script src="/boot.js?v=${ASSET_V}"></script>
 <script src="${AV('app.js')}"></script>
 <script src="${AV(activePage.file + '.js')}"></script>
 </body>
@@ -89,6 +89,7 @@ function loginPage({ next = '/', error = '', lang = 'zh' } = {}) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${t('登录')} · ${title}</title>
+<script src="/boot.js?v=${ASSET_V}"></script>
 <link rel="stylesheet" href="${AV('app.css')}">
 <link rel="icon" href="/badge.svg" type="image/svg+xml">
 </head>
@@ -101,9 +102,9 @@ function loginPage({ next = '/', error = '', lang = 'zh' } = {}) {
     </div>
     <h2>${t('把家里的服务，安全地放到公网')}</h2>
     <ul class="feat">
-      <li><span class="ico" aria-hidden="true">◧</span><div><b>${t('多出口')}</b><em>${t('快速隧道与命名隧道可以同时跑，换域名不用改配置')}</em></div></li>
-      <li><span class="ico" aria-hidden="true">⤳</span><div><b>${t('规则分流')}</b><em>${t('一条隧道挂多个服务：路径分流、基础认证、IP 白名单')}</em></div></li>
-      <li><span class="ico" aria-hidden="true">◫</span><div><b>${t('看得见')}</b><em>${t('访问统计、审计日志、Prometheus 指标与告警')}</em></div></li>
+      <li><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10l-3-3M4 7l3 3"/><path d="M4 17h10l-3-3M4 17l3 3"/></svg></span><div><b>${t('多出口')}</b><em>${t('快速隧道与命名隧道可以同时跑，换域名不用改配置')}</em></div></li>
+      <li><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h4"/><path d="M8 12 14 6h6"/><path d="M8 12l6 6h6"/></svg></span><div><b>${t('规则分流')}</b><em>${t('一条隧道挂多个服务：路径分流、基础认证、IP 白名单')}</em></div></li>
+      <li><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.8-6 10-6 10 6 10 6-3.8 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.6"/></svg></span><div><b>${t('看得见')}</b><em>${t('访问统计、审计日志、Prometheus 指标与告警')}</em></div></li>
     </ul>
     <p class="foot">${t('开源 MIT')} · <a href="https://github.com/jianghugs/cf-tunnel-panel" target="_blank" rel="noopener">github.com/jianghugs/cf-tunnel-panel</a></p>
   </aside>
@@ -118,14 +119,14 @@ function loginPage({ next = '/', error = '', lang = 'zh' } = {}) {
       <div class="cred">
         <div class="field" id="uField">
           <label for="u">${t('用户名')}</label>
-          <input id="u" name="username" autocomplete="username" required autofocus aria-describedby="uErr">
+          <input id="u" type="text" name="username" autocomplete="username" required autofocus aria-describedby="uErr">
           <p class="fmsg hidden" id="uErr" role="alert"></p>
         </div>
         <div class="field" id="pField">
           <label for="p">${t('密码')}</label>
           <div class="pwd">
             <input id="p" name="password" type="password" autocomplete="current-password" required aria-describedby="pErr">
-            <button class="eye" type="button" id="btnReveal" aria-label="${t('显示密码')}" title="${t('显示密码')}" aria-pressed="false">👁</button>
+            <button class="eye" type="button" id="btnReveal" aria-label="${t('显示密码')}" title="${t('显示密码')}" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.8-6 10-6 10 6 10 6-3.8 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.6"/></svg></button>
           </div>
           <p class="fmsg hidden" id="pErr" role="alert"></p>
         </div>
@@ -145,7 +146,6 @@ function loginPage({ next = '/', error = '', lang = 'zh' } = {}) {
     <p class="tips">${t('不勾选「记住这台设备」时，登录状态保留 7 天；随时可在「设置 → 登录会话」里查看并踢掉其它设备。')}</p>
   </main>
 </div>
-<script src="/boot.js?v=${ASSET_V}"></script>
 <script src="${AV('login.js')}"></script>
 </body>
 </html>`;

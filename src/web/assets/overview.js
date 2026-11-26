@@ -93,8 +93,25 @@ const CPAD = 1.2;   // 左右留白，避免首尾柱子被卡片边缘切掉
 function chartLabels(keys) {
   const n = Math.max(1, keys.length);
   const step = n > 8 ? 2 : 1;
-  const items = keys.map((t, i) => (i % step ? '' :
-    `<span style="left:${(((i + 0.5) / n) * 100).toFixed(2)}%">${new Date(t).getHours()}:00</span>`)).join('');
+  // 分钟级采样（相邻点间隔 < 10 分钟）只在整点标一次：否则同一个小时会被标两遍「3:00」
+  const minuteLevel = n > 24 && keys.length > 1
+    && (new Date(keys[1]).getTime() - new Date(keys[0]).getTime()) < 10 * 60e3;
+  const seen = new Set();
+  const put = (t, i) => {
+    const label = `${new Date(t).getHours()}:00`;
+    if (seen.has(label)) return '';
+    seen.add(label);
+    return `<span style="left:${(((i + 0.5) / n) * 100).toFixed(2)}%">${label}</span>`;
+  };
+  let items = '';
+  keys.forEach((t, i) => {
+    if (minuteLevel) { if (new Date(t).getMinutes() === 0) items += put(t, i); return; }
+    if (i % step === 0) items += put(t, i);
+  });
+  if (!seen.size) {
+    // 窗口不足一小时（没有整点）时退回均匀取样
+    keys.forEach((t, i) => { if (i % step === 0) items += put(t, i); });
+  }
   return `<div class="chart-x">${items}</div>`;
 }
 
@@ -186,7 +203,7 @@ function drawHist(points) {
       <polygon points="${area}" fill="var(--acc)" opacity="0.16"></polygon>
       <polyline points="${pts}" fill="none" stroke="var(--acc)" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round"></polyline>
       ${points.map((p, i) => `<circle cx="${(i * step).toFixed(2)}" cy="${y(p.running).toFixed(2)}" r="1.1" fill="var(--acc)"><title>${new Date(p.t).getHours()}:00 · ${p.running}/${p.total} 在线</title></circle>`).join('')}
-    </svg>${chartLabels(keys.filter((_, i) => i % Math.max(1, Math.ceil(points.length / 6)) === 0))}
+    </svg>${chartLabels(keys)}
     <div class="chart-sum">
       <span class="tag ok">当前 <b>${last.running}</b> / ${last.total} 在线</span>
       <span class="tag">区间最低 <b>${minUp}</b></span>
