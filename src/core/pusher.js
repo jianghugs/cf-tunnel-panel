@@ -24,7 +24,7 @@ function schedulePush(delay = 500) {
 // 隧道进来的流量对端是这些节点，真实访客 IP 在 CF-Connecting-IP 头里；
 // 要按真实访客做 IP 白名单/黑名单，必须先让 Caddy 信任这些代理段。
 // 段表会变（Cloudflare 偶尔新增），可用环境变量 CLOUDFLARE_IPS 覆盖（逗号分隔）。
-async function pushCaddy() {
+async function pushOnce() {
   let cfg;
   try {
     cfg = buildCaddyConfig();
@@ -76,6 +76,31 @@ async function pushCaddy() {
     log(`Caddy 配置下发失败: ${e.message}`, 'caddy');
   }
   return caddy;
+}
+
+// 单飞 + 脏标记：Caddy 的 /load 是「后到覆盖先到」，并发下发会让旧配置冲掉新状态
+// （典型：建分享推 A、设维护推 B，两条同时在飞，A 后到就把维护路由冲掉 → 本该 503 的请求变 401）。
+// 这里保证任何时刻最多一条 /load 在飞；飞行途中的改动打脏标记，结束后只补推一次，
+// 补推时重新 buildCaddyConfig() 拿最新 state。
+let running = null;
+let dirty = false;
+
+async function pushLoop() {
+  let r;
+  do {
+    dirty = false;
+    r = await pushOnce();
+  } while (dirty);
+  return r;
+}
+
+function pushCaddy() {
+  if (running) {
+    dirty = true;
+    return running.then(() => (dirty ? pushCaddy() : caddy));
+  }
+  running = pushLoop().finally(() => { running = null; });
+  return running;
 }
 
 // ---------------------------------------------------------------- cloudflared（多隧道出口）
