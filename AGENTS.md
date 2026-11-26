@@ -87,7 +87,7 @@ PANEL_URL=http://127.0.0.1:8090 PANEL_PASS=<面板口令> node test/api.test.mjs
 # 前端（jsdom，需要 puppeteer 之外的东西？不需要，但要有 jsdom）
 NODE_PATH=/tmp/jsd/node_modules node test/dom.test.cjs
 
-# 真 Caddy 端到端（起临时 Caddy :8180 / admin :20290，不碰生产）
+# 真 Caddy 端到端（会写真生产配置！先读下面「第三套的真相」）
 node test/e2e-caddy.mjs
 ```
 
@@ -108,10 +108,27 @@ docker run --rm --network host -v "$PWD":/w -v /tmp/jsd:/j -w /w \
   node:22-alpine node test/dom.test.cjs
 ```
 
-基线（2026-11-26，v0.29.39）：API 367/367、DOM 236/236。第三套 `e2e-caddy.mjs` 会临时改写线上规则与两个维护开关（自带快照/还原），要跑先想清楚。
+基线（2026-11-26，v0.29.39）：API 367/367、DOM 236/236、e2e 39/39。
+
+**第三套 `e2e-caddy.mjs` 的真相**（原来这里写「起临时 Caddy :8180 / admin :20290，不碰生产」，是错的）：脚本里没有任何 `spawn caddy`，它用 basic auth 直连本机 leader 面板，`POST /api/routes` 把 6 条探针规则（`e2e-strip` / `e2e-keep` / `e2e-auth` / `e2e-hostA` / `e2e-hostB` / `e2e-ws`，upstream 指向脚本自起的本地 HTTP+WS 服务）**塞进线上规则表**，由面板推给线上 Caddy（127.0.0.1:20190）；同时临时打开「维护模式」、把 `127.0.0.1/32` 拉进 IP 黑名单。快照落在 `/tmp/e2e-routes-<pid>.json`，`finally` 里还原。**跑完要自己复核一遍**：规则条数与跑前一致、`maintenance.on=false`、`ipDeny` 为空。
+
+三个必踩的坑：
+
+- `CADDY_PORT` 必须等于**线上 Caddy 的监听口 8080**（不是随便挑个空闲口）；
+- `E2E_STANDBY_PORT` 默认 8096 常被别的进程占用，换一个（如 8196）；
+- 第二实例要读到 leader 的租约：容器里跑必须把真 `data` 挂进 `/data`（脚本从 `/api/system` 取到的 `dataDir` 是**容器内路径** `/data`），否则第二实例用空目录起、直接自己当 leader，standby 那几条断言全挂。
+
+```bash
+docker run --rm --network host -v "$PWD":/w -v "$PWD/data":/data -v /tmp/jsd:/j -w /w \
+  -e NODE_PATH=/j/node_modules -e PANEL_URL=http://127.0.0.1:8090 -e PANEL_PASS='<面板口令>' \
+  -e CADDY_PORT=8080 -e E2E_STANDBY_PORT=8196 \
+  node:22-alpine node test/e2e-caddy.mjs
+```
 
 已知假失败模式：改完代码刚重启时，固定 `sleep` 等待会抖 → 用 `waitFor(fn, 8000)`（`test/dom.test.cjs` 里已有）。
 `jsdom` 的 `localStorage` 每次 `open()` 都是新的，别指望跨「刷新」保留状态。
+
+验「未命中 → 404」别用 fetch 直打 `127.0.0.1:8080`：本部署有一条 `host=127.0.0.1 path=/` 的兜底规则（带 basicAuth），任何路径都会被它接住变成 401。要换一个没有任何规则匹配的 Host（`e2e-caddy.mjs` 已改成 `rawGet(path, 'e2e-no-rule.example.test')`）。
 
 ## 8. 排障速查
 

@@ -177,8 +177,10 @@ function rawGet(path, host, extra = '') {
   ok('WebSocket 升级：Caddy 返回 101', /101 Switching Protocols/.test(res), String(res).slice(0, 80));
 }
 // 6) 未命中 → 自定义 404
+// 不能用 fetch 直打 127.0.0.1: 本部署有一条 host=127.0.0.1 path=/ 的兜底规则（带 basicAuth），
+// 任何路径都会被它接住变成 401。要验 404 兜底，必须换一个没有任何规则匹配的 Host。
 {
-  const r = await get('/definitely-not-a-route-' + Date.now());
+  const r = await rawGet('/definitely-not-a-route-' + Date.now(), 'e2e-no-rule.example.test');
   ok('未命中规则返回 404', r.status === 404, String(r.status));
 }
 // 7) 维护模式：整站 503 + Retry-After
