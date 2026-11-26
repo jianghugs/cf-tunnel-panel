@@ -2,6 +2,24 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.42
+
+## 下发串行化：并发推送不再互相覆盖
+
+修掉一个会让「维护模式 / IP 黑名单 / 分享链接」看似失效的真 bug。
+
+- **根因**：`src/core/pusher.js` 的 `schedulePush()` 只防「重复排期」（`if (pushTimer) return`），不防「已经在飞」。而 `pushCaddy()` 内部 `await fetch(CADDY_ADMIN + '/load')` 是异步的，于是两条推送可以同时在飞，Caddy 的 `/load` 是**后到覆盖先到** —— 先发出的那份配置如果后落地，就把后来的状态冲掉。典型场景：建分享链接（推 A：维护关）与开维护模式（推 B：维护开）几乎同时发生，A 后到 → 维护路由被冲掉，本该 503 的请求落回面板自身的 401。
+- **修法**：`pushCaddy()` 拆成 `pushOnce()`（逻辑一行未动，含 admin 候选地址、`Origin` 头、8s 超时、`caddy.routeCount` 与「已下发 N 条代理规则」日志）与新的单飞外壳：任何时刻最多一条 `/load` 在飞，飞行途中的改动打 `dirty` 标记，结束后重新 `buildCaddyConfig()` 拿最新 state 补推一次。对外接口（`/api/caddy/push`、各 handler 里的 `await pushCaddy()`）语义不变。
+- **复现与验证**：用假 Caddy admin（奇数号 `/load` 慢 400ms、偶数号立即返回，模拟「先发后到」）跑并发探针 —— 并发「建分享 + 开维护」后取最终落地的配置：
+  - 打补丁前：`hasMaintenance=false`、`hasShare=true`（维护路由被冲掉）→ 1 条失败
+  - 打补丁后：`hasMaintenance=true`、`hasShare=true` → 4/4 通过
+
+## 验证
+
+- 并发下发探针 4/4（打补丁前 3/4，失败项就是维护路由丢失）
+- DOM 回归 236/236
+- 发布后对生产面板复跑 API 回归，此前 8 条「经 Caddy 127.0.0.1:8080 取证」的失败应全部转绿
+
 ## v0.29.41
 
 ## 界面收尾：空态、可读性、分区与吸底保存
