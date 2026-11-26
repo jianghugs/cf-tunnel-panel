@@ -135,10 +135,32 @@ docker run --rm --network host -v "$PWD":/w -v "$PWD/data":/data -v /tmp/jsd:/j 
 | 现象 | 先看什么 |
 |---|---|
 | 页面样式全丢 / 404 页面来自别的服务 | `curl -sI https://panel.jianghugs.shop/login` 看有没有 `via: 1.1 Caddy`；再看 `GET /accounts/<acc>/cfd_tunnel/<tid>/connections` 有没有多余连接器 |
-| 502 / 530 | `docker logs cf-tunnel-caddy --tail 50`；`curl -s -u admin:<pass> http://127.0.0.1:8090/api/routes` 看上游端口 |
+| 502 / 530 | **先 `ss -ltnp \| grep 8080` 确认只有一个 caddy**（两个 = SO_REUSEPORT 抢端口，见下方小节）；再看 `docker logs cf-tunnel-caddy --tail 50`；`curl -s -u admin:<pass> http://127.0.0.1:8090/api/routes` 看上游端口 |
 | 面板打不开但容器在 | `curl -s http://127.0.0.1:8090/healthz`；两色 leader 判断（见上） |
 | 体检红项 | 面板「监控 → 一键体检」跑 14 项，每项带「怎么办」；或 `curl -s -u admin:<pass> 'http://127.0.0.1:8090/api/selfcheck?scope=quick'` |
 | 隧道重连多 | 出口卡有 `重连 ×N` 徽标；体检 `出口链路稳定性` 项；必要时把协议从 `auto` 改 `http2` |
+
+### 公网 502、本地却是 200
+
+症状：`curl -sI https://panel.jianghugs.shop/healthz` 返回 502，但
+`curl -s -H 'Host: panel.jianghugs.shop' http://127.0.0.1:8080/healthz` 是 200 —— 或者反过来，
+连着打几次，200 和 502 交替出现。
+
+先看谁在听 8080：
+
+```bash
+ss -ltnp | grep 8080
+```
+
+正常只有一条（`cf-tunnel-caddy` 容器里的 caddy，pid 形如 531480）。如果看到**两条 caddy**
+抢同一个 `127.0.0.1:8080`，就是 SO_REUSEPORT：两个进程都在 accept，其中挂着旧配置的那个会把
+`panel.jianghugs.shop` 指向已经停掉的旧颜色端口（例如滚动升级后 8090 已经没了），于是公网随机 502。
+
+处理：把非生产那个 `docker rm -f` 掉（本地调试用的 `caddy-test`、预览实例自带的临时 Caddy 都算）。
+**别在 8080 上起自己的测试 Caddy** —— 调试一律用 8089 / 20299 这类高位端口。
+
+教训：这次是排查 pusher 竞态时起的 `caddy-test` 忘了收，导致 0.29.42 上线后公网随机 502，
+排查了半天配置，实际是端口被抢。
 
 ## 9. 提交 / 协作约定
 

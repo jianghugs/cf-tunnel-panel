@@ -18,6 +18,47 @@ const { ACCESS_LOG_FILE, CADDY_ADMIN, DATA_DIR, STATE_FILE, pkgVersion } = requi
 
 const TIMEOUT = 3000;
 
+const http = require('http');
+const https = require('https');
+const dns = require('dns');
+
+/**
+ * 强制走 IPv4 的一次 GET，用来兜住「本机没有 IPv6 出口」的假失败。
+ *
+ * 为什么需要：这台机器（和容器）的 DNS 同时返回 A 与 AAAA，但没有 v6 出口。
+ * Node 的 fetch 底下是 undici，遇到「AAAA 先回来、v6 又不通」会一路等到超时
+ * （实测稳定 ~520ms 后 ETIMEDOUT，而同一容器里 curl 是 200）——出口自检于是
+ * 每次都报 warn，久了就没人再看这条警告。所以第一次失败后再兜一次：
+ * 自己解析 A 记录、按 IP 连、用 servername 带上 SNI，行为等同 curl -4。
+ */
+function getV4(url, ms = 6000) {
+  return new Promise((resolve, reject) => {
+    let u;
+    try { u = new URL(url); } catch (e) { return reject(e); }
+    const isTls = u.protocol === 'https:';
+    const mod = isTls ? https : http;
+    const port = u.port || (isTls ? 443 : 80);
+    dns.lookup(u.hostname, { family: 4 }, (de, addr) => {
+      if (de || !addr) return reject(de || new Error('没有 A 记录'));
+      const req = mod.request({
+        host: addr,
+        port,
+        path: (u.pathname || '/') + (u.search || ''),
+        method: 'GET',
+        servername: isTls ? u.hostname : undefined,
+        headers: { host: u.hostname, 'user-agent': 'cfp-selfcheck', accept: '*/*' },
+        timeout: ms,
+      }, (res) => {
+        res.resume();
+        resolve({ status: res.statusCode || 0, ip: addr });
+      });
+      req.on('timeout', () => req.destroy(new Error(`IPv4 也超时（${ms}ms）`)));
+      req.on('error', reject);
+      req.end();
+    });
+  });
+}
+
 async function fetchText(url, ms = TIMEOUT, headers = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
@@ -142,6 +183,18 @@ async function runChecks(state, ctx = {}, opts = {}) {
       try {
         r = await fetchText(url, 6000);
       } catch (e) {
+        // 先兜一次 IPv4：本机没有 v6 出口时 fetch 会假失败（见 getV4 注释）
+        try {
+          const v4 = await getV4(url, 6000);
+          const ok4 = v4.status < 500;
+          return {
+            status: ok4 ? 'ok' : 'warn',
+            detail: `${url} → HTTP ${v4.status}（IPv4 兜底成功，${v4.ip}）`,
+            hint: ok4 ? '' : 'cloudflared 在跑但对端返回 5xx；多半是背后那个上游服务挂了，或 Cloudflare 侧的 ingress 没指到这里。',
+          };
+        } catch (e2) {
+          // 兜底也没通，才按原来的判断报
+        }
         const slow = e && e.name === 'AbortError';
         return {
           status: 'warn',
