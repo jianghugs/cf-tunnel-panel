@@ -33,6 +33,8 @@ CADDY_ADMIN=${CADDY_ADMIN:-http://127.0.0.1:20190}
 # 默认只听回环：:8080 会绑 0.0.0.0，既可能撞宿主机上已占 8080 的进程，也等于把代理暴露到内网
 CADDY_LISTEN=${CADDY_LISTEN:-127.0.0.1:8080}
 UIDGID=${UIDGID:-1000:1000}
+# 宿主 docker 组 gid：容器里的 1000 要补进这个组，才能读 /var/run/docker.sock
+DOCKER_GID=${DOCKER_GID:-989}
 READY_TIMEOUT=${READY_TIMEOUT:-60}
 # MOUNT_SRC=1（默认）把工作区的 src/tools/package.json 挂进容器：改完代码直接升级，不必构建镜像。
 # MOUNT_SRC=0 则完全用镜像里的代码 —— 前提是先 `docker compose build panel`；
@@ -146,7 +148,7 @@ if [ -z "$CUR_NAME" ]; then
   say "== bootstrap：创建 $BASE-$CUR_COLOR（:$CUR）=="
   docker rm -f "$BASE-$CUR_COLOR" >/dev/null 2>&1 || true
   docker run -d --name "$BASE-$CUR_COLOR" \
-    --network host --user "$UIDGID" --restart unless-stopped \
+    --network host --user "$UIDGID" --group-add "$DOCKER_GID" --restart unless-stopped \
     -e PORT="$CUR" -e LOG_STDOUT=1 -e TZ=Asia/Shanghai -e NODE_OPTIONS=--dns-result-order=ipv4first \
     -e CADDY_ADMIN="$CADDY_ADMIN" -e CADDY_LISTEN="$CADDY_LISTEN" \
     -e PANEL_INSTANCE="$CUR_COLOR-$CUR-$(date +%s)" \
@@ -171,7 +173,7 @@ say ""
 say "== 1/4 起新实例 $NEXT_NAME（:$NEXT）=="
 docker rm -f "$NEXT_NAME" >/dev/null 2>&1 || true
 docker run -d --name "$NEXT_NAME" \
-  --network host --user "$UIDGID" --restart unless-stopped \
+  --network host --user "$UIDGID" --group-add "$DOCKER_GID" --restart unless-stopped \
   -e PORT="$NEXT" -e LOG_STDOUT=1 -e TZ=Asia/Shanghai -e NODE_OPTIONS=--dns-result-order=ipv4first \
   -e CADDY_ADMIN="$CADDY_ADMIN" -e CADDY_LISTEN="$CADDY_LISTEN" \
   -e PANEL_INSTANCE="$NEXT_COLOR-$NEXT-$(date +%s)" \

@@ -38,9 +38,17 @@ async function dockerContainers() {
   try {
     list = await dockerApi('/containers/json');
   } catch (e) {
-    const hint = e.code === 'ENOENT' || /ENOENT/.test(e.message)
-      ? '容器里没有 /var/run/docker.sock（在 docker-compose.yml 的 panel 服务加一行挂载）'
-      : e.message;
+    let hint;
+    if (e.code === 'ENOENT' || /ENOENT/.test(e.message)) {
+      hint = '容器里没有 /var/run/docker.sock —— docker-compose.yml 的 panel 服务缺一行只读挂载';
+    } else if (e.code === 'EACCES' || /EACCES|Permission denied/i.test(e.message)) {
+      hint = 'socket 挂上了但没权限：宿主 socket 是 root:docker 0660，面板以 uid/gid 1000 运行，'
+           + '需要给 panel 服务补 group_add（宿主 docker 组 gid）';
+    } else if (e.code === 'ETIMEDOUT' || /超时/.test(e.message) || /timeout/i.test(e.message)) {
+      hint = 'socket 连上了但 Docker 没响应（超时）：先确认 dockerd 在跑、没卡住';
+    } else {
+      hint = e.message;
+    }
     return { available: false, error: hint, containers: [] };
   }
   const details = await Promise.all(list.map(async (c) => {

@@ -25,6 +25,9 @@ services:
       - ./data:/data
       # Docker 容器清单 → 面板「一键加规则」。只读挂载即可（API 走 unix socket）
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    # 光挂上还不够：宿主 socket 是 root:docker 0660，容器里是 1000:1000，
+    # 不补 docker 组就会 EACCES「Permission denied」。宿主组 gid 变了用 DOCKER_GID 覆盖。
+    group_add: ["${DOCKER_GID:-989}"]
     environment:
       TZ: Asia/Shanghai
       PORT: "8090"           # 面板 UI

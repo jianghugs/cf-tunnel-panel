@@ -12,8 +12,8 @@ async function loadDocker() {
     if (!d.available) {
       box.innerHTML = `<div class="empty empty-act">
           <div class="t">读不到 Docker</div>
-          <div class="hint">${esc(d.note || '面板容器没有挂载 /var/run/docker.sock，所以看不到本机容器。')}</div>
-          <div class="sub">要修：给 panel 服务加上 <span class="mono">/var/run/docker.sock:/var/run/docker.sock:ro</span> 挂载，再 <span class="mono">docker compose up -d</span>；不修也不影响其它功能。</div>
+          <div class="hint">${esc(d.error || d.note || '面板容器连不上 Docker，所以看不到本机容器。')}</div>
+          <div class="sub">挂载是 <span class="mono">/var/run/docker.sock:/var/run/docker.sock:ro</span>，权限靠 <span class="mono">group_add</span> 补上宿主 docker 组 gid；改完要滚动升级一次才生效，不修也不影响其它功能。</div>
           <button class="sm ghost" data-dockretry="1">重试</button>
         </div>`;
       const rb2 = box.querySelector('[data-dockretry]');
