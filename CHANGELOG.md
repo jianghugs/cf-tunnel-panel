@@ -2,6 +2,38 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.49
+
+### 安全与运维收口（第二轮审计的第一批）
+
+这版只动了「已经在做但不彻底」和「缺一层」的地方，功能行为不变。
+
+**安全**
+- **HSTS**：Caddy 配置里给每条路由前置一个 `headers` 处理器，下发 `Strict-Transport-Security: max-age=15552000`（180 天）。
+  - 用「同一条路由内前置处理器」而不是新增一条路由，是因为下发计数用的是 `routes.length - 1`，多一条会让自检的「本地 7 条 / Caddy 7 条」对不上。
+  - 只在 https 下有意义（浏览器忽略 http 上的 HSTS），内网裸 IP 访问不受影响。
+  - 落库前先在一次性 Caddy 2.11.9 实例上验过 `handle` 顺序与字段名，再推给线上；响应头已在 `panel.jianghugs.shop` 与 `demo.jianghugs.shop` 上实测出现。
+- **会话 cookie 的 Secure**：`isSecure()` 现在优先看 Cloudflare 的 `CF-Visitor`（`{"scheme":"https"}`）。走隧道时 Caddy 到面板这一跳是明文 http，之前只看 `x-forwarded-proto` 会把 https 访问判成 http，cookie 就少了 `Secure`。
+
+**运维**
+- `tools/release.sh`：旧面板镜像保留数从 3 个降到 2 个（每版约 460MB）。
+- `tools/monitoring/docker-compose.yml`：Prometheus 除了已有的 `retention.time=15d`，再加 `retention.size=2GB` 上限。
+
+**顺带更正上一轮审计的 5 个误判（都已在代码里）**
+- 不存在「双重登录」：`/login` 公网与内网都直接 200，之前看到的 401 是未登录访问受保护路径的正常响应。
+- backups 已有 20 份上限（`saveState()` 里滚动删除）。
+- Prometheus 早已设 `retention.time=15d`。
+- Caddy 访问日志早已按 `roll_size_mb: 10, roll_keep: 3` 自滚动（上限约 40MB）。
+- 带 `?v=<codehash>` 的静态资源早已是 `max-age=31536000, immutable`。
+
+**验证**
+- `test/api.test.mjs` 对生产 367/367。
+- `test/dom.test.cjs` 对同版预览实例 236/236。
+- `/api/selfcheck` 14/14；公网 `https://panel.jianghugs.shop/healthz` 200。
+- Caddy 响应头实测：`Strict-Transport-Security: max-age=15552000`（panel 与 demo 两个 Host 都有），`routeCount` 仍是 7。
+
+**下一步（同一轮审计里还没做的）**：拆 `server.js`（2380 行 / 77 个 API 路径）、测试里 22 处固定 `sleep()` 换轮询、i18n 79 处页面中文未收录、生成 OpenAPI。
+
 ## v0.29.48
 
 ## 图表与 Grafana 的最后两处
