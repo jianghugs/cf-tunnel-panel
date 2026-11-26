@@ -6,6 +6,11 @@ import path from 'node:path';
 import http from 'node:http';
 
 const B = process.env.PANEL_URL || 'http://127.0.0.1:8090';
+
+// 经 Caddy 取证用的前端地址：默认本机 8080。
+// 换机器、或让 Caddy 监听在别处时，用 CADDY_EDGE 指过去，别改测试文件。
+const EDGE = process.env.CADDY_EDGE || 'http://127.0.0.1:8080';
+const EDGE_URL = new URL(EDGE);
 const USER = process.env.PANEL_USER || 'admin';
 const PASS = process.env.PANEL_PASS || '';
 if (!PASS) {
@@ -166,7 +171,7 @@ const sh = await j('/api/shares', { method: 'POST', body: { name: 'API 分享', 
 ok('创建分享 200', sh.status === 200 && !!sh.d.share.url, sh.d.share && sh.d.share.url);
 if (sh.d.share) {
   const sharePath = sh.d.share.path || ('/s/' + sh.d.share.token);
-  const r = await fetch('http://127.0.0.1:8080' + sharePath);
+  const r = await fetch(EDGE + sharePath);
   ok('分享链接经 Caddy 可用', r.status === 200, String(r.status));
   const d2 = await j(`/api/shares/${sh.d.share.id}/delete`, { method: 'POST' });
   ok('删除分享 200', d2.status === 200, String(d2.status));
@@ -174,20 +179,20 @@ if (sh.d.share) {
 
 // 维护模式
 await j('/api/settings', { method: 'POST', body: { maintenance: { on: true, body: 'API 测试维护中', retryAfter: 120 } } });
-const dm = await fetch('http://127.0.0.1:8080/qa');
+const dm = await fetch(EDGE + '/qa');
 ok('维护模式返回 503', dm.status === 503, String(dm.status));
 const ra = dm.headers.get('retry-after');
 ok('维护模式带 Retry-After', ra === '120', String(ra));
 await j('/api/settings', { method: 'POST', body: { maintenance: { on: false, body: '', retryAfter: 300 } } });
-const dm2 = await fetch('http://127.0.0.1:8080/qa');
+const dm2 = await fetch(EDGE + '/qa');
 ok('关闭维护后恢复 200', dm2.status === 200, String(dm2.status));
 
 // IP 黑名单
 await j('/api/settings', { method: 'POST', body: { security: { ipDeny: '127.0.0.1/32' } } });
-const db = await fetch('http://127.0.0.1:8080/qa');
+const db = await fetch(EDGE + '/qa');
 ok('黑名单命中 403', db.status === 403, String(db.status));
 await j('/api/settings', { method: 'POST', body: { security: { ipDeny: '' } } });
-const db2 = await fetch('http://127.0.0.1:8080/qa');
+const db2 = await fetch(EDGE + '/qa');
 ok('清空黑名单恢复 200', db2.status === 200, String(db2.status));
 
 // 面板自带测速端点
@@ -210,7 +215,7 @@ ok('本机 Caddy 延迟可测', bl.d.ok === true && bl.d.ttfbMs && typeof bl.d.t
   const tok = sh.d.share && sh.d.share.token;
   ok('分享链接创建成功', !!tok, sh.d.share && sh.d.share.url);
   const hit = (pth) => new Promise((res) => {
-    const rq = http.request({ host: '127.0.0.1', port: 8080, path: pth, method: 'GET', headers: { Host: host } }, (r) => { r.resume(); res(r.statusCode); });
+    const rq = http.request({ host: EDGE_URL.hostname, port: Number(EDGE_URL.port || 80), path: pth, method: 'GET', headers: { Host: host } }, (r) => { r.resume(); res(r.statusCode); });
     rq.on('error', () => res(0)); rq.end();
   });
   const codeRoot = await hit(`/s/${tok}`);

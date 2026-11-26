@@ -571,7 +571,6 @@ const EN_V0142C = {
   '谁在什么时候、从哪个 IP、改了什么': 'who changed what, from which IP, and when',
   '测': 'Test',
   '删': 'Del',
-  '中': '中',
 };
 Object.assign(EN, EN_V0142C);
 
@@ -1056,7 +1055,6 @@ const EN_V0298 = {
   '图直接从': 'Panels load straight from',
   '取，没走 Cloudflare 隧道': ', skipping the Cloudflare tunnel',
   'Grafana 已连上，正在画图…': 'Grafana connected, drawing…',
-  '局域网直连地址（可选）': 'LAN address (optional)',
 };
 Object.assign(EN, EN_V0298);
 
