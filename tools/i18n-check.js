@@ -142,6 +142,8 @@ function visibleTexts(rel) {
   for (const raw of out) {
     const s = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     if (s.length < 2 || !hasCJK(s)) continue;
+    // CODEISH 命令 / 配置片段不进字典（curl、webhook_configs、含 :// 或 { 的行）
+    if (/^(curl|wget|docker|webhook_configs)\b/.test(s) || s.includes('://') || s.includes('{')) continue;
     res.push(s);
   }
   return res;
