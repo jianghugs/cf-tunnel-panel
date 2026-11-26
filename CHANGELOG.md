@@ -2,6 +2,31 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.45
+
+## 修掉「工具箱 → 本机 Docker 容器：读不到 Docker」
+
+页面一直提示「给 panel 服务加 /var/run/docker.sock 挂载再 docker compose up -d」。这句话是错的：
+挂载从 v0.8.0 就在 `docker-compose.yml:27`，运行中的容器也确实挂着 `rw=false`。
+
+真因是权限：宿主 socket 是 `root:docker 0660`（本机 docker 组 gid **989**），而面板以 `uid=1000 gid=1000` 运行，
+组不匹配 → `EACCES Permission denied`。`dockerApi()` 只区分了 ENOENT，其余一律把原始报错抛给前端，于是被统一显示成「没挂载」。
+
+改动（4 个文件）：
+
+- `docker-compose.yml`：panel 服务加 `group_add: ["${DOCKER_GID:-989}"]`，挂载行保留。
+- `tools/rolling-upgrade.sh`：新增 `DOCKER_GID=${DOCKER_GID:-989}`，两处 `docker run`（bootstrap 与升级）都加 `--group-add "$DOCKER_GID"`——否则滚动升级一次就把组丢了，问题复发。
+- `src/core/integrations.js`：`dockerContainers()` 按 `ENOENT`（没挂载）/`EACCES`（没进 docker 组）/超时 三种情况分别给提示，不再一律透传原始报错。
+- `src/web/assets/tools.js`：空态文案改用后端返回的 `d.error`，并写明「挂载 + group_add，改完要滚动升级一次才生效」。
+
+验证：`docker compose --profile bootstrap config` 渲染出 `group_add: ["989"]`；同条件实测
+`docker run --user 1000:1000 --group-add 989 -v /var/run/docker.sock:/var/run/docker.sock:ro` → socket 可打开
+（`No such device or address` 是 cat 一个 socket 的正常结果），不加组则是 `Permission denied`。
+升级后用 `/api/docker/containers` 确认 `available:true` 且能列出容器。
+
+说明：panel 在 `profiles: ["bootstrap"]` 里，`docker compose up -d` 本身不会重建它（只有 caddy/demo，且都是 up-to-date）；
+要让设置生效走 `tools/rolling-upgrade.sh --apply`，blue ↔ green 切换，不中断。
+
 ## v0.29.44
 
 ## 0.29.44
