@@ -2,6 +2,35 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.44
+
+## 0.29.44
+
+本版只动「出站取证」这一层，把 IPv4 兜底从自检里抽成公共模块，铺到所有会打公网的地方。修的是同一类假失败：**本机只有 v4 出口，但域名的 DNS 同时返回 A 和 AAAA**，Node 的 `fetch`（undici）与 `net.connect` 遇到 AAAA 先回、v6 又连不通时会一路等到超时，而 `curl` 走 happy-eyeballs 会自动回落 —— 于是面板上会出现「出口在线但自检报红」「一键新建出口最后一步自测失败」「Cloudflare 演练拿不到计划表」这类看得见摸不着的红灯。
+
+### 新增
+
+- `src/core/httpv4.js`：`getV4(url, opts)` —— 先 `dns.lookup(host, { family: 4 })` 拿 IPv4，再按 IP 直连（`http/https.request`），保留 `Host` 头与 SNI（`servername`），支持 `method / headers / body / timeout / maxBytes`，返回 `{ status, headers, body, ip }`。
+
+### 改动
+
+- `src/core/selfcheck.js`：删掉 v0.29.43 里那份本地兜底，改为 `require('./httpv4')`，行为不变（出口探针失败后兜一次，成功则 detail 注明「IPv4 兜底成功，<IP>」）。
+- `src/core/probe.js`：上游探测两个阶段都兜底 —— TCP 阶段先解析 IPv4 再 `net.connect`；HTTP 阶段失败后 `getV4` 再试一次，成功时 `note` 写「已用 IPv4 直连（<IP>）拿到响应」。
+- `src/server.js`：一键新建出口的「公网自测」步骤、以及边缘缓存预热探测，同样加一层 `getV4` 兜底（预热顺便从 `cf-ray` 里解析 colo）。
+- `src/core/integrations.js`：`cfApi()` 改成 `fetch` 失败后走 `getV4` 重试，状态码与 JSON 判断改看兜底结果 —— Cloudflare 的「演练」「建隧道」「清缓存」不再因为 v6 假失败而中断。
+
+### 验证
+
+- 容器内实测：`getV4('https://demo.jianghugs.shop/')` → 200（IP 198.18.8.175）；`getV4('https://panel.jianghugs.shop/healthz')` → 200（IP 198.18.9.46）；同样 URL 的裸 `fetch` 报 `The operation was aborted due to timeout`。
+- `probeUpstream` 四例：`https://demo.jianghugs.shop/` → ok 200（tcp 1079ms / 总 2124ms）；`https://panel.jianghugs.shop/healthz` → 200；`http://127.0.0.1:8090/` → 302；`http://127.0.0.1:9/` → 「端口 9 没人监听（connection refused）」，失败路径照旧。
+- DOM 回归 236/236（含「工具箱：演练结果显示计划表」）。
+- API 回归基线 367/367（0.29.43 时；本版未动路由与下发逻辑）。
+
+### 备注
+
+- `PANEL_*` 环境变量、数据结构、接口均未变，可直接滚动升级。
+- 如果你确实给机器配了可用 IPv6 出口，这条兜底只在 `fetch` 失败后才启用，不影响原来的直连路径。
+
 ## v0.29.43
 
 ### 修
