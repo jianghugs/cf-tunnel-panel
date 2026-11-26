@@ -108,3 +108,23 @@ curl -s -u admin:*** http://127.0.0.1:8090/api/selfcheck | python3 -m json.tool 
 - **换 token**：Cloudflare 后台 Tunnels → 该隧道的 `⋯` → **Refresh token**（旧 token 立刻失效），回面板把出口的 token 更新即可；也可以「复制成新出口」再删掉旧的。
 - **删隧道**：先删面板里的出口（会停掉 cloudflared），再去 Cloudflare 删隧道和那条 CNAME，避免留下 `530` 的死记录。
 - ⚠️ token 等同于「以该隧道身份连入你的账户」，贴到聊天/工单里就等于泄露；泄露后最省事的处置就是 Refresh 一次。
+
+## 一条隧道只给一台机器用（2026-11-26 的实际故障）
+
+同一个隧道 token 可以被**多台机器同时连接**，Cloudflare 会把请求轮流分给每个连接器（connector）。如果其中一台机器的 `127.0.0.1:8080` 跑的不是面板（例如那台机器上是 frps），那么约 1/3–1/2 的请求会拿到 frp 的 404 页 —— 表现为「网页样式全没了」「一会儿能打开一会儿 404」。
+
+排查（有 CF API token 就能跑）：
+
+```python
+# 看这条隧道现在有几个连接器、分别来自哪个 IP
+GET /accounts/{account_id}/cfd_tunnel/{tunnel_id}/connections
+# 返回里每个 client 有 version/arch，conns[].origin_ip 是来源 IP
+```
+
+修复顺序（本次采用第三种）：
+
+1. 在多余的那台机器上停掉 cloudflared（`docker stop <name>` 或 `systemctl stop cloudflared`）；
+2. 轮换隧道 token（`Refresh token`），旧 token 全部失效，再更新面板里出口的 token；
+3. **给面板单开一条隧道**：新建隧道 → ingress 指向 `http://127.0.0.1:8080` → 把 `panel`/`grafana` 的 CNAME 切到新隧道 → 面板里新增一个 token 模式出口并启动 → 旧隧道留给实验用。
+
+2026-11-26 起：`panel.jianghugs.shop` 与 `grafana.jianghugs.shop` 走专用隧道 `b826c185`（出口「面板专用出口（新）」），实验用的旧隧道 `0cbc1a01` 已从这两条 CNAME 上摘除，ingress 只剩 404。
