@@ -2,6 +2,36 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.47
+
+## v0.29.47 — 热修：Caddy 配置里去掉不支持的 roll_keep_for
+
+**v0.29.46 有一个致命问题，已在 20 分钟内修掉，这里说明白。**
+
+### 出了什么事
+v0.29.46 给 Caddy 访问日志加了 `roll_keep_for: '168h'`，想让超过 7 天的日志自动清理。但这台 Caddy（2.11.9）的 file writer **不认识这个字段**：
+
+```
+HTTP 400: loading config: setting up default log: loading log writer module:
+loading module 'file': decoding module config: caddy.logging.writers.file:
+json: unknown field "roll_keep_for"
+```
+
+每次下发都 400，Caddy 侧配置失效 → `panel.jianghugs.shop` 变成 502。
+
+### 怎么修的
+删掉 `roll_keep_for`，恢复成原来的 `roll_size_mb: 10, roll_keep: 3`（按体积滚动、留 3 份）。**按天回收这件事这次不做**，原因是 Caddy 的 file writer 没有这个能力，硬加只会把配置推挂。日志总量本来就被 `roll_size_mb` 限住了（最多 30MB × 若干），不是无界增长；真要按天归档，得让 Caddy 走 journald 或外部轮转，另开一版做。
+
+### 教训（值得记）
+1. **改 Caddy 配置字段前先在真 Caddy 上验一遍 `/load`**，别只看文档。Caddy 的 `/load` 失败会连带停掉既有 server，代价是整站 502。
+2. 上线顺序应该是「先在旁路实例把 config 推给真 Caddy 验证，再发版」，这次顺序反了。
+
+### 验证
+- `POST /api/caddy/push` → `{"ok":true,"caddy":{"ok":true,"routeCount":7}}`
+- 公网 `panel.jianghugs.shop/healthz` 200、`demo.jianghugs.shop` 200
+- Prometheus 单目标 `up=1`
+- DOM 回归 236/236
+
 ## v0.29.46
 
 ## v0.29.46 — P0 五项运维收口
