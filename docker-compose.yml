@@ -63,6 +63,14 @@ services:
       - ./data/caddy-logs:/logs
       - caddy_data:/data
       - caddy_config:/config
+    # 容器 running 不代表 Caddy 在工作（配置加载失败时也是 running）。
+    # admin 接口能应答才算真的起来了；滚动升级会等这个 healthy 再切流量。
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:20190/config/"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
 
   # 演示上游：把请求头原样回显，用来验证「公网 -> 隧道 -> caddy -> 内网服务」整条链路
   demo:

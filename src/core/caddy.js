@@ -304,7 +304,7 @@ function buildCaddyConfig() {
           level: 'INFO',
           encoder: { format: 'json' },
           // 访问日志落文件，面板据此做「最近请求 / 状态码 / 命中了哪条规则」统计
-          writer: { output: 'file', filename: accessLogPathForCaddy(), roll_size_mb: 10, roll_keep: 3 },
+          writer: { output: 'file', filename: accessLogPathForCaddy(), roll_size_mb: 10, roll_keep: 3, roll_keep_for: '168h' },
         },
       },
     },

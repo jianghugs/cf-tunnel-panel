@@ -10,9 +10,11 @@ rule_files:
 scrape_configs:
   - job_name: cf-tunnel-panel
     metrics_path: /metrics
+    # 只抓 8080：Caddy 里有一条 host=127.0.0.1 的规则指向「当前在跑的那一色」，
+    # 所以这个 target 永远指向活着的槽位 —— 不会再出现「备份槽位长期 down」的假告警。
+    # （以前写死 8090 + 8095，任何时刻必有一条红，等于把真信号泡成噪音。）
     static_configs:
-      - targets: ['127.0.0.1:8090', '127.0.0.1:8095']
-    # 停着的那一色会 down，用 instance 标签区分即可（PanelDown 告警里已说明）
+      - targets: ['127.0.0.1:8080']
 
 # 告警交给 Alertmanager 路由；Alertmanager 再把 webhook 打回面板（见 alertmanager.yml）
 alerting:

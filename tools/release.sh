@@ -157,6 +157,17 @@ if d.get("drift") is not False:
   echo "✅ 部署校验通过"
 fi
 
+  # 旧镜像回收：面板镜像每版约 460MB，只留最近 3 个 tag
+  if command -v docker >/dev/null 2>&1; then
+    OLDIMG=$(docker images --format '{{.Repository}}:{{.Tag}} {{.CreatedAt}}' \
+      | grep '^cf-tunnel-panel:' | grep -v ':local' \
+      | sort -k2 -r | tail -n +4 | cut -d' ' -f1)
+    if [ -n "$OLDIMG" ]; then
+      echo "$OLDIMG" | xargs -r docker rmi >/dev/null 2>&1 || true
+      echo "已回收旧镜像：$(echo "$OLDIMG" | tr '\n' ' ')"
+    fi
+  fi
+
 step "完成"
 cat <<EOF
 接下来可以核对：
