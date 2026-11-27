@@ -2,6 +2,34 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.59
+
+## 这一版修的是「审计出来的 7 个洞」
+
+### 安全
+- **公网 `/metrics` 不再裸奔**：以前 `https://panel.jianghugs.shop/metrics` 直接 200，把版本、代码指纹、隧道 id 与名字、主实例、请求分布全摊开。现在面板层判 `cf-connecting-ip` / `cf-ray`（Cloudflare 经隧道必带），带这两个头就 404。本机直连与 Prometheus 抓取（127.0.0.1:8080）都不带，监控不受影响。没走 Caddy 加路由，是因为 pusher 用 `routes.length - 1` 记 routeCount，多一条会让自检「本地 7 条 / Caddy 7 条」对不上。
+- **写操作补 Origin 校验**：以前只有 `SameSite=Lax` 一道锁，同站子域或老浏览器挡不住。现在非 GET 的 `/api/*` 如果带 `Origin`/`Referer` 且与 `Host` 不同源 → 403。curl / 测试脚本不带头，照常放行。
+
+### 稳定性
+- **`unhandledRejection` 兜底**：Node 22 默认把未处理拒绝当致命错误，进程会退，容器拉起来但租约掉、cloudflared 重连，而且一点痕迹没有。现在记一条日志 + 计数，进程继续跑。
+- **`tools/rollback.sh <版本>`**：0.29.46 那次把整站打挂时只能手工起临时实例推配置。现在一条命令：把目标版本镜像重标成 `local` → 走滚动升级 → 校验 healthz 版本与公网，任一步不对自动切回原版本。
+
+### 可观测
+- `/metrics` 新增：`cf_caddy_push_ms`（上次下发耗时）、`cf_caddy_push_failures_total`、`cf_selfcheck_fails` / `cf_selfcheck_warn`、`cf_unhandled_rejections_total`、`cf_process_rss_bytes`、`cf_eventloop_p99_ms` / `cf_eventloop_max_ms`。
+- 告警新增 4 条：`SelfcheckFailing`、`UnhandledRejections`、`CaddyPushFailures`、`EventLoopLagHigh`（`tools/monitoring/prometheus/alerts.yml` 与 `docs/prometheus-alerts.yml` 两份已同步）。
+
+### 前端
+- `sw.js` 升到 v3：只预缓存 `/assets/icon.svg`、`/assets/offline.html`。`app.css` / `app.js` 的请求带 `?v=<codehash>`，预缓存裸路径永远命不中（白占空间），改由 runtime 缓存按完整 URL 收。
+
+## 验证
+- 全新实例（空 DATA_DIR）：`test/smoke.mjs` **91/91**；带 `cf-connecting-ip` 访 `/metrics` → **404**；跨站 POST → **403**、同源 POST → 200。
+- 预览实例（生产数据副本 + 新代码）：**DOM 236/236**；API **353/354 + 跳过 13 条**（无真 Caddy 边缘，且预览的 CADDY_ADMIN 指死端口），唯一未过的是 `上游健康全部在线`，属预览环境上游抖动，生产同用例为绿。
+- 静态检查：`check-requires` 55 文件 0 问题、`i18n-check` 通过、`openapi --check` 89 路径 95 操作、`eslint --quiet` 0 问题。
+
+## 教训
+- 改 `tools/monitoring/prometheus/alerts.yml` 必须同步 `docs/prometheus-alerts.yml`，测试里有断言会比较两份内容（这次就是这么被抓住的）。
+- `/metrics` 的封禁要按「Cloudflare 是否加了头」判，按 Host 判会误伤 Prometheus（它是用 `Host: 127.0.0.1` 抓 8080 的）。
+
 ## v0.29.58
 
 ## 质量收尾：测试防线、去重复、静态检查
