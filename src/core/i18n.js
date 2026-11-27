@@ -1181,4 +1181,15 @@ const EN_V0310 = {
 };
 Object.assign(EN, EN_V0310);
 
+const EN_V0320 = {
+  'Caddy 自身日志': 'Caddy own log',
+  '最近 100 行': 'Last 100 lines',
+  '最近 200 行': 'Last 200 lines',
+  '最近 500 行': 'Last 500 lines',
+  '当前 —': 'current —',
+  '。回滚会重建容器、15–30 秒不可用；只能回到本机已有的镜像，不会联网拉取。':
+    '.Rolling back recreates the container (15–30s downtime); only images already on this machine can be used — nothing is pulled from the network.',
+};
+Object.assign(EN, EN_V0320);
+
 module.exports = { COOKIE, LANGS, EN, langOf, t, clientDict };

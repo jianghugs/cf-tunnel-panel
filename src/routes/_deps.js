@@ -47,7 +47,7 @@ const { pushCaddy, pushTimer, schedulePush } = _pusher;
 const _tunnels = require('../core/tunnels');
 const { QUICK_RE, applyTunnelFields, normalizeTunnelToken, publicTunnels, runtimeOf, startAll, startTunnel, stopAll, stopTunnel, syncTunnels, tokenTunnelOf, tunnelArgs } = _tunnels;
 const _insight = require('../core/insight');
-const { countPanelReq, upstreamHealth, HISTORY_MAX, badgeSvg, diffRoutes, healthOf, histTick, metricsText, readAccess, refreshUpstreamHealth, requestsLastMinute, rtHistory, sampleHistory, securityAttempts, shadowReport, simulateMatch, systemInfo, tcpProbeOnce, trafficByHour, trafficByPath, upstreamTarget } = _insight;
+const { countPanelReq, upstreamHealth, HISTORY_MAX, badgeSvg, diffRoutes, healthOf, histTick, metricsText, readAccess, readCaddyOwnLog, refreshUpstreamHealth, requestsLastMinute, rtHistory, sampleHistory, securityAttempts, shadowReport, simulateMatch, systemInfo, tcpProbeOnce, trafficByHour, trafficByPath, upstreamTarget } = _insight;
 const _bench = require('../core/bench');
 const { BENCH_MAX_MB, benchLocalOnce, coloOf, sendBenchBlob } = _bench;
 const _probe = require('../core/probe');
@@ -229,6 +229,7 @@ module.exports = {
   histTick,
   metricsText,
   readAccess,
+  readCaddyOwnLog,
   refreshUpstreamHealth,
   requestsLastMinute,
   rtHistory,

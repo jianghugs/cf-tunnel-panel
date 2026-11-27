@@ -439,6 +439,35 @@ document.addEventListener('click', async (e) => {
       setLogOpen($('#logBox').classList.contains('collapsed'));
     });
   }
+  // Caddy 自身日志（caddy.log）：启动、admin API、证书这些不进访问日志的东西
+  async function loadCaddyLog() {
+    const box = $('#caddyLogBox');
+    if (!box) return;
+    const n = ($('#caddyLogN') || {}).value || '200';
+    const onlyErr = !!(($('#caddyLogErr') || {}).checked);
+    try {
+      const r = await api('/api/caddy/log?n=' + encodeURIComponent(n) + (onlyErr ? '&onlyError=1' : ''));
+      if (!r || !r.exists) { box.textContent = (r && r.note) || '还没有 caddy.log'; return; }
+      const lines = r.lines || [];
+      if (!lines.length) { box.textContent = onlyErr ? '最近没有错误级别的记录' : '（这个文件还是空的）'; return; }
+      box.textContent = lines.map((l) => {
+        const t = l.t ? new Date(l.t).toLocaleTimeString('zh-CN', { hour12: false }) : '--:--:--';
+        const lv = String(l.level || '').toUpperCase();
+        return `${t}${lv ? ' [' + lv + ']' : ''}${l.logger ? ' ' + l.logger : ''} ${l.msg || ''}`;
+      }).join('\n');
+    } catch (e) {
+      box.textContent = '读取失败：' + ((e && e.message) || e);
+    }
+  }
+  if ($('#caddyLogBox')) {
+    const cbox = $('#caddyLogBox');
+    cbox.classList.add('collapsed');
+    cbox.addEventListener('click', () => cbox.classList.toggle('collapsed'));
+    if ($('#btnCaddyLogRefresh')) $('#btnCaddyLogRefresh').addEventListener('click', loadCaddyLog);
+    if ($('#caddyLogN')) $('#caddyLogN').addEventListener('change', loadCaddyLog);
+    if ($('#caddyLogErr')) $('#caddyLogErr').addEventListener('change', loadCaddyLog);
+    loadCaddyLog();
+  }
   // 日志为空时给一句状态，别留一条黑框（刚打开、或流还没吐数据）
   const logHint = () => {
     const box = $('#logBox');

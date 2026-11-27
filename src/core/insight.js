@@ -9,7 +9,7 @@ const http=require('http'); const https=require('https');
 const path=require('path'); const os=require('os');
 const zlib=require('zlib');
 
-const { ACCESS_LOG_FILE, BACKUP_DIR, DATA_DIR, STATE_FILE, VERSION } = require('./paths');
+const { ACCESS_LOG_FILE, BACKUP_DIR, CADDY_OWN_LOG_FILE, DATA_DIR, STATE_FILE, VERSION, otherLogPathForCaddy } = require('./paths');
 const _state = require('./state');
 const state = _state.stateProxy;
 const { tunnelById, tunnelRt } = require('./registry');
@@ -440,6 +440,40 @@ function panelReqSnapshot() {
 // Caddy 访问日志目录占用：抓取时扫目录，30 秒缓存（目录里就几个文件，代价可忽略）。
 // 用途是「按天看得见增长」，替代做不到的「按天切文件」（Caddy 2.11.9 不认 roll_keep_for）。
 let _caddyLogMemo = { at: 0, bytes: 0, files: 0 };
+/**
+ * 读 Caddy 自身日志（caddy.log：启动、admin API、证书、自动 https）。
+ * 访问日志是另一个文件（access.log，见 readAccess），两者在 0.29.64 起分开写。
+ */
+function readCaddyOwnLog(limit = 200, opts = {}) {
+  const file = CADDY_OWN_LOG_FILE;
+  const maxBytes = Math.min(2 * 1024 * 1024, Math.max(64 * 1024, Number(opts.bytes) || 512 * 1024));
+  let size = 0;
+  try { size = fs.statSync(file).size; } catch (e) {
+    return { exists: false, file, size: 0, lines: [], note: e.code === 'ENOENT' ? '还没有 caddy.log —— Caddy 大概刚启动，或者它还没写过一行' : String(e.message || e) };
+  }
+  let text = '';
+  try {
+    const from = Math.max(0, size - maxBytes);
+    const fd = fs.openSync(file, 'r');
+    try {
+      const buf = Buffer.alloc(size - from);
+      fs.readSync(fd, buf, 0, buf.length, from);
+      text = buf.toString('utf8');
+    } finally { fs.closeSync(fd); }
+  } catch (e) {
+    return { exists: true, file, size, lines: [], note: `读取失败：${e.message || e}` };
+  }
+  const raw = text.split('\n');
+  if (raw.length && raw[0] && !raw[0].startsWith('{')) raw.shift();   // 尾部截断可能切坏首行
+  const lines = raw.filter(Boolean).slice(-limit).map((s) => {
+    try {
+      const o = JSON.parse(s);
+      return { t: Number(o.ts || 0) * 1000 || 0, level: String(o.level || ''), logger: String(o.logger || ''), msg: String(o.msg || o.message || '') };
+    } catch { return { t: 0, level: '', logger: '', msg: s }; }
+  });
+  return { exists: true, file, size, lines };
+}
+
 function caddyLogStats() {
   if (Date.now() - _caddyLogMemo.at < 30000) return _caddyLogMemo;
   let bytes = 0;
@@ -650,4 +684,4 @@ function securityAttempts(hours = 24, limit = 3000) {
   return out;
 }
 
-module.exports = { caddyLogStats, countPanelReq, panelReqSnapshot, upstreamHealth, HISTORY_MAX, badgeSvg, diffRoutes, healthOf, histTick, metricsText, readAccess, readLogText, refreshUpstreamHealth, requestsLastMinute, rtHistory, sampleHistory, shadowReport, simulateMatch, systemInfo, tcpProbeOnce, trafficByHour, trafficByPath, securityAttempts, upstreamTarget };
+module.exports = { caddyLogStats, readCaddyOwnLog, countPanelReq, panelReqSnapshot, upstreamHealth, HISTORY_MAX, badgeSvg, diffRoutes, healthOf, histTick, metricsText, readAccess, readLogText, refreshUpstreamHealth, requestsLastMinute, rtHistory, sampleHistory, shadowReport, simulateMatch, systemInfo, tcpProbeOnce, trafficByHour, trafficByPath, securityAttempts, upstreamTarget };

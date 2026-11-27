@@ -100,4 +100,20 @@
     </div>
     <pre class="log collapsed" id="logBox" aria-live="polite" style="border-radius:0 0 var(--radius) var(--radius)"></pre>
   </div>
+
+  <div class="card flush">
+    <div class="hd">
+      <h2>Caddy 自身日志</h2>
+      <div class="right">
+        <select id="caddyLogN" style="width:auto" aria-label="显示条数">
+          <option value="100">最近 100 行</option>
+          <option value="200" selected>最近 200 行</option>
+          <option value="500">最近 500 行</option>
+        </select>
+        <label class="inline"><input class="chk" type="checkbox" id="caddyLogErr" /> 只看错误</label>
+        <button class="sm ghost" id="btnCaddyLogRefresh">刷新</button>
+      </div>
+    </div>
+    <pre class="log collapsed" id="caddyLogBox" aria-live="polite" style="border-radius:0 0 var(--radius) var(--radius)"></pre>
+  </div>
 </div>

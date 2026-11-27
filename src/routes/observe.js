@@ -22,6 +22,7 @@ const {
   history,
   HISTORY_MAX,
   readAccess,
+  readCaddyOwnLog,
   simulateMatch,
   trafficByHour,
   trafficByPath,
@@ -155,6 +156,17 @@ async function handle(p, req, res, url) {
       ok: true, available: !!d.available, sampled: rows.length, totalRoutes: state.routes.length,
       hours, unmatched, routes: list, note: d.note || '',
     });
+  }
+
+  // Caddy 自身日志（启动 / admin API / 证书），和访问日志不是一个文件
+  if (p === '/api/caddy/log' && req.method === 'GET') {
+    const n = Math.min(1000, Math.max(20, Number(url.searchParams.get('n')) || 200));
+    const onlyErr = url.searchParams.get('onlyError') === '1';
+    const r = readCaddyOwnLog(n);
+    let lines = r.lines;
+    if (onlyErr) lines = lines.filter((l) => /error|fatal|warn/i.test(String(l.level)) || /error|fail|panic|cannot|refused/i.test(String(l.msg)));
+    const name = String(r.file || '').split('/').pop();
+    return sendJson(res, 200, { ok: true, exists: !!r.exists, file: name, size: r.size || 0, lines, note: r.note || '' });
   }
 
   if (p === '/api/logs' && req.method === 'GET') {
