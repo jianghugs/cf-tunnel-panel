@@ -2,6 +2,34 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.62
+
+## v0.29.62
+
+### 新增：新版本提示
+
+侧栏版本号后面会多一个小角标，形如 `↑ v0.29.63`——当 GitHub 上有比当前更新的 Release 时出现，点一下直接打开那条 Release。没有新版本就什么都不显示。
+
+检查是 **每 6 小时最多一次**（记在 localStorage），失败静默：GitHub 打不开、限流、没网，都只是不显示角标，不弹任何错误、不影响面板使用。
+
+### 接口
+
+`GET /api/version/latest` —— 返回 `{ok, current, latest, hasUpdate, url, publishedAt, notes, checkedAt}`，服务端缓存 6 小时；取 GitHub 的 `releases/latest`，走 `getV4`（本机没有 IPv6 出口，直接用 fetch 会卡在 AAAA 上）。
+
+### 说明：备份下载本来就有
+
+原本打算这版做「备份能下载」，查了一下 `/api/backups/download` 和备份列表里的「下载」按钮都已经在（带 `Content-Disposition`、`Cache-Control: no-store`），实测下一个 7.4 KB 的 settings 快照正常，所以这块不动。
+
+「备份推到异地」（S3 / WebDAV / 另一台机器）还没做——需要先定目标与凭据，等你指定。
+
+### 验证
+
+- 预览实例 `GET /api/version/latest` → 200，1.3s，返回 `latest 0.29.61`、`hasUpdate:false`（当前就是最新）
+- `/assets/app.js` 含 `checkUpdate`、`/assets/app.css` 含 `.ver-badge`
+- `bash tools/check.sh` 五项全绿；OpenAPI 92 条路径 / 99 个操作
+
+修正一处：新版本检查里 `getV4` 忘了 require，被 ESLint 的 no-undef 当场抓到（运行时它抛错会静默回落 fetch，所以功能看起来正常，其实是隐患）。这正是上一版把 eslint 接进 CI 的意义。
+
 ## v0.29.61
 
 ## v0.29.61
