@@ -2,6 +2,34 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.55
+
+## 重构：server.js 从 2380 行减到 784 行
+
+把 server.js 里的路由按子系统搬进 `src/routes/*.js`，每条路由导出 `handle(p, req, res, url)`
+（未命中返回 false），server.js 只留「鉴权门 → 三块静态/入口 → `/api/*` 模块自决调度」。
+
+- `src/http/{static,boot,onreq}.js`：静态资源、boot.js、请求入口（限流/审计/探针判定）
+- `src/routes/shares.js`、`cf.js`、`backups.js`：一次性分享、Cloudflare、备份恢复
+- `src/routes/monitor.js`、`observe.js`、`rules.js`：体检、观测数据、代理规则
+- `src/routes/settings.js`、`ops.js`：设置/导出导入/配置即代码、运维导出与安全
+- `src/routes/authroutes.js`：会话、运维账号、TOTP、面板登录
+
+留在 server.js 的：隧道 CRUD 那一簇（`/api/tunnels/<id>` 的正则块夹在 start-all 与 operator
+之间，挪进调度链会被这条正则先吃掉），以及鉴权门之前的登录/登出与 alerts hook。
+
+## 顺带修掉
+
+- `observe.js` 里 `require('./core/audit')` 少一级 `../`，导致 `/api/audit/days` 500（0.29.53 已修）
+- `observe.js` / `rules.js` 残留裸 `auth.who`，线上「保存规则」报 400（0.29.54 已修）
+
+## 验证
+
+- DOM 236/236（预览实例，含全部新代码）
+- API 353/367（预览的 CADDY_ADMIN 指死端口，14 条依赖真 Caddy 的既有用例失败）；线上同版本 367/367
+- i18n 自检：重复键 0 / 空译文 0 / 未收录中文 0
+- OpenAPI：89 路径 95 操作，`--check` 通过
+
 ## v0.29.54
 
 ### 修 0.29.52/0.29.53 引入的一个真故障：保存代理规则返回 400
