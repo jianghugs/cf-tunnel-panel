@@ -27,6 +27,9 @@ jobs:
           node tools/i18n-check.js
           node tools/openapi.js --check
 
+      - name: 告警规则副本同步
+        run: node tools/check-alerts.js
+
       - name: ESLint（no-undef：抓「变量不在作用域」这类运行期才炸的问题）
         run: npx eslint . --quiet
       - name: 语法检查（全部 JS）

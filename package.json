@@ -15,12 +15,13 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "npm run test:requires && npm run test:i18n && npm run test:openapi && npm run test:lint && npm run test:api && npm run test:dom",
+    "test": "npm run test:requires && npm run test:i18n && npm run test:openapi && npm run test:alerts && npm run test:lint && npm run test:api && npm run test:dom",
     "test:requires": "node tools/check-requires.js",
     "test:i18n": "node tools/i18n-check.js",
     "test:api": "node test/api.test.mjs",
     "test:dom": "node test/dom.test.cjs",
     "test:openapi": "node tools/openapi.js --check",
+    "test:alerts": "node tools/check-alerts.js",
     "test:smoke": "node test/smoke.mjs",
     "lint": "eslint .",
     "test:lint": "eslint . --quiet"

@@ -72,7 +72,13 @@ async function open(path, wait = 900, until = null) {
     },
   });
   if (until) await waitFor(until(dom.window), wait);
-  else await sleep(wait);
+  else {
+    // 没有显式条件时：等文档加载完 → 等「读取中…」占位消失（说明首屏接口回来了）→ 给一点渲染余量。
+    // 比死等 wait 毫秒快，机器慢时也不会误判。
+    await waitFor(() => dom.window.document.readyState === 'complete', wait, 60);
+    await waitFor(() => !/\u8bfb\u53d6\u4e2d/.test(dom.window.document.body.textContent || ''), wait, 80);
+    await sleep(120);
+  }
   return { dom, win: dom.window, doc: dom.window.document, errors };
 }
 
