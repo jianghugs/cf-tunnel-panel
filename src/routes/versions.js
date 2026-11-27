@@ -161,7 +161,12 @@ async function handle(p, req, res, url) {
       sendJson(res, 409, { ok: false, error: `已有一个回滚请求在排队（目标 ${prev.version}），等它跑完再点` });
       return true;
     }
-    writeJson(reqFile(), { version: want, from: VERSION, at: Date.now(), by: authOf(req).who || '' });
+    try {
+      writeJson(reqFile(), { version: want, from: VERSION, at: Date.now(), by: authOf(req).who || '' });
+    } catch (e) {
+      sendJson(res, 500, { ok: false, error: `写不进 data/ops（${e.code || e.message}）：宿主机执行 chown 1000:1000 data/ops` });
+      return true;
+    }
     audit(req, '回滚面板', `${VERSION} → ${want}`);
     log(`回滚请求已排队：${VERSION} → ${want}（等宿主机 ops-agent 执行）`, 'panel');
     sendJson(res, 200, { ok: true, queued: true, version: want });

@@ -16,6 +16,9 @@ RES="$OPS/rollback-result.json"
 LOG="$ROOT/data/logs/ops-agent.log"
 
 mkdir -p "$OPS" "$(dirname "$LOG")"
+# 目录属主必须是面板容器里的运行用户（1000:1000），否则面板写不进请求
+chown 1000:1000 "$OPS" 2>/dev/null || true
+chmod 775 "$OPS" 2>/dev/null || true
 exec >>"$LOG" 2>&1
 
 # 同一时刻只允许一个实例，避免 cron 叠跑
