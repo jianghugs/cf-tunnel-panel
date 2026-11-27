@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-/* 从 src/server.js 里扫出真实注册的 /api 路由，生成 / 校验 docs/openapi.json。
+/* 从 src/server.js 与 src/routes/*.js 里扫出真实注册的 /api 路由，生成 / 校验 docs/openapi.json。
    用法：
      node tools/openapi.js --gen     重新生成 docs/openapi.json
      node tools/openapi.js --check   CI 用：代码里有、文档里没有 → 非零退出
@@ -62,7 +62,15 @@ function regexToPath(src) {
 }
 
 function scanRoutes() {
-  const src = fs.readFileSync(SERVER, 'utf8');
+  // 路由可能分散在 src/server.js 与 src/routes/*.js（C8 拆分后），一起扫
+  const ROUTE_DIR = path.join(ROOT, 'src', 'routes');
+  const files = [SERVER];
+  if (fs.existsSync(ROUTE_DIR)) {
+    for (const f of fs.readdirSync(ROUTE_DIR)) {
+      if (f.endsWith('.js')) files.push(path.join(ROUTE_DIR, f));
+    }
+  }
+  const src = files.map((f) => fs.readFileSync(f, 'utf8')).join('\n');
   const found = new Map(); /* "METHOD /path" -> {method, path, kind} */
   const lines = src.split('\n');
 
