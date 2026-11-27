@@ -17,6 +17,15 @@ const zlib = require('zlib');
 const net = require('net');
 const fs = require('fs');
 const path = require('path');
+
+// ---- OpenAPI 描述（GET /api/openapi 用）：首次读盘后进程内缓存
+let _openapiCache = null;
+function readOpenapi() {
+  if (_openapiCache) return _openapiCache;
+  const f = path.join(__dirname, '..', 'docs', 'openapi.json');
+  _openapiCache = JSON.parse(fs.readFileSync(f, 'utf8'));
+  return _openapiCache;
+}
 const os = require('os');
 const { spawn } = require('child_process');
 const QRCode = require('qrcode');
@@ -1883,6 +1892,13 @@ async function handler(req, res) {
     return sendJson(res, 200, { ok: true, event: entry.event, title: entry.title });
   }
 
+  if (p === '/api/openapi' && req.method === 'GET') {
+    try {
+      return sendJson(res, 200, readOpenapi());
+    } catch (e) {
+      return sendJson(res, 500, { ok: false, error: 'docs/openapi.json 读不到：' + e.message + '（跑 node tools/openapi.js --gen 生成）' });
+    }
+  }
   if (p === '/api/system') return sendJson(res, 200, { ok: true, ...systemInfo() });
 
   // 清 Cloudflare 边缘缓存：不传 urls = 清空整个域名

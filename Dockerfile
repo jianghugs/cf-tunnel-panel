@@ -33,6 +33,8 @@ RUN npm config set registry ${NPM_REGISTRY} \
 
 COPY src ./src
 COPY tools ./tools
+# docs/openapi.json 由 GET /api/openapi 直接对外提供，必须进镜像
+COPY docs ./docs
 # 宿主机上被编辑器/脚本写成 600 的文件会被 COPY 原样带进来，容器里以 uid 1000 运行就读不了
 # （症状：EACCES open /app/src/core/xxx.js → 容器反复重启）。统一放开读权限。
 RUN chmod -R a+rX /app

@@ -1,0 +1,2246 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "cf-tunnel-panel API",
+    "version": "auto",
+    "description": "Cloudflare 隧道 + Caddy 面板的内部 HTTP 接口。本文件由 tools/openapi.js --gen 生成，路由以 src/server.js 为唯一事实源；新增接口请同步补说明后重跑生成。"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "tags": [
+    {
+      "name": "系统与鉴权",
+      "description": "登录、会话、面板角色、系统信息"
+    },
+    {
+      "name": "代理规则",
+      "description": "规则表读写、命中自测、模拟匹配"
+    },
+    {
+      "name": "隧道出口",
+      "description": "cloudflared 出口的增删启停与流量"
+    },
+    {
+      "name": "设置",
+      "description": "面板设置、配置即代码、导入导出"
+    },
+    {
+      "name": "安全",
+      "description": "IP 黑名单、可疑访问、二次验证、只读账号"
+    },
+    {
+      "name": "监控体检",
+      "description": "一键体检、Prometheus / 告警、静默"
+    },
+    {
+      "name": "一次性质",
+      "description": "一次性分享链接"
+    },
+    {
+      "name": "Cloudflare",
+      "description": "隧道、DNS、边缘缓存"
+    },
+    {
+      "name": "工具箱",
+      "description": "本机容器、链路自测、测速"
+    },
+    {
+      "name": "日志审计",
+      "description": "面板日志、访问日志、审计日志"
+    },
+    {
+      "name": "备份恢复",
+      "description": "配置备份、差异、回滚"
+    },
+    {
+      "name": "观测数据",
+      "description": "流量采样、热门路径、历史点"
+    },
+    {
+      "name": "其他",
+      "description": "未归类的杂项接口"
+    }
+  ],
+  "paths": {
+    "/api/access": {
+      "get": {
+        "tags": [
+          "日志审计"
+        ],
+        "summary": "访问日志（Caddy 侧）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/access.csv": {
+      "get": {
+        "tags": [
+          "日志审计"
+        ],
+        "summary": "访问日志导出为 CSV",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/alerts/hook": {
+      "post": {
+        "tags": [
+          "监控体检"
+        ],
+        "summary": "接收 Alertmanager 的告警回调，转发到通知渠道",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/alerts/hook-token": {
+      "get": {
+        "tags": [
+          "监控体检"
+        ],
+        "summary": "读取告警钩子令牌（用于配置 Alertmanager）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "tags": [
+          "日志审计"
+        ],
+        "summary": "审计日志列表（可按天、按动作过滤）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/audit.csv": {
+      "get": {
+        "tags": [
+          "日志审计"
+        ],
+        "summary": "审计日志导出为 CSV",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/audit/days": {
+      "get": {
+        "tags": [
+          "日志审计"
+        ],
+        "summary": "有审计记录的日期清单",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/audit/trend": {
+      "get": {
+        "tags": [
+          "日志审计"
+        ],
+        "summary": "审计事件按天聚合的趋势",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/backups": {
+      "get": {
+        "tags": [
+          "备份恢复"
+        ],
+        "summary": "列出配置备份（按时间倒序，最多保留 20 份）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/backups/diff": {
+      "get": {
+        "tags": [
+          "备份恢复"
+        ],
+        "summary": "两个备份之间的差异对比",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/backups/download": {
+      "get": {
+        "tags": [
+          "备份恢复"
+        ],
+        "summary": "下载某个备份文件",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/backups/restore": {
+      "post": {
+        "tags": [
+          "备份恢复"
+        ],
+        "summary": "用某个备份回滚配置",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/bench/local": {
+      "post": {
+        "tags": [
+          "工具箱"
+        ],
+        "summary": "面板本机跑一次链路测速（下行吞吐）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/caddy/config": {
+      "get": {
+        "tags": [
+          "其他"
+        ],
+        "summary": "返回当前生成出来的 Caddy 配置（只读，用于核对）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/caddy/push": {
+      "post": {
+        "tags": [
+          "其他"
+        ],
+        "summary": "把当前规则表手动下发给 Caddy（推送为单飞串行，飞完会补推最新状态）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/cf/cache/purge": {
+      "post": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "按 URL 或全量清理 Cloudflare 边缘缓存",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/cf/cache/rule": {
+      "get": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "GET 读取缓存规则；POST 设置缓存规则",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "GET 读取缓存规则；POST 设置缓存规则",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/cf/cache/warm": {
+      "post": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "预热边缘缓存（返回命中机房）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/cf/dns": {
+      "get": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "GET 列出 DNS 记录；POST 新增记录",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "GET 列出 DNS 记录；POST 新增记录",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/cf/dns/{id}/delete": {
+      "get": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "删除一条 DNS 记录",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "资源标识"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/cf/tunnels": {
+      "get": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "GET 列出 Cloudflare 隧道；POST 新建隧道",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "GET 列出 Cloudflare 隧道；POST 新建隧道",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/cf/tunnels/{id}": {
+      "get": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "读取单条 Cloudflare 隧道的详情（连接器与状态）",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "资源标识"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/cf/tunnels/{id}/delete": {
+      "get": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "删除一条 Cloudflare 隧道",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "资源标识"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/cf/tunnels/{id}/hostnames": {
+      "post": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "给隧道加一个公共主机名（同时可选建 CNAME）",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "资源标识"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/cf/tunnels/{id}/hostnames/delete": {
+      "post": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "从隧道里删掉一个公共主机名",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "资源标识"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/cf/tunnels/{id}/ingress": {
+      "get": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "读取某条隧道的 ingress 规则",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "资源标识"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/cf/tunnels/{id}/token": {
+      "get": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "读取隧道 token（在别的机器上装连接器时用）",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "资源标识"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/cf/tunnels/quick": {
+      "post": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "一键新建出口：隧道 + DNS + 代理规则一条龙",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/cf/verify": {
+      "get": {
+        "tags": [
+          "Cloudflare"
+        ],
+        "summary": "校验 Cloudflare API 凭据是否可用",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/config": {
+      "get": {
+        "tags": [
+          "设置"
+        ],
+        "summary": "当前生效配置（配置即代码的出口）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/config/apply": {
+      "post": {
+        "tags": [
+          "设置"
+        ],
+        "summary": "把某个快照应用回运行态",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/config/drift": {
+      "get": {
+        "tags": [
+          "设置"
+        ],
+        "summary": "对比磁盘配置与运行态，判断是否发生漂移",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/config/snapshot": {
+      "get": {
+        "tags": [
+          "设置"
+        ],
+        "summary": "GET 读取某个快照内容；POST 把当前配置存为新快照",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "设置"
+        ],
+        "summary": "GET 读取某个快照内容；POST 把当前配置存为新快照",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/config/snapshots": {
+      "get": {
+        "tags": [
+          "设置"
+        ],
+        "summary": "列出配置快照",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/curl": {
+      "post": {
+        "tags": [
+          "工具箱"
+        ],
+        "summary": "服务端代发一次 HTTP 请求，回显状态码、耗时与响应头",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/docker/containers": {
+      "get": {
+        "tags": [
+          "工具箱"
+        ],
+        "summary": "读取本机容器列表（需要挂 docker.sock 且在 docker 组内）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/export": {
+      "get": {
+        "tags": [
+          "设置"
+        ],
+        "summary": "导出全部配置为 JSON",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/export.yaml": {
+      "get": {
+        "tags": [
+          "设置"
+        ],
+        "summary": "导出全部配置为 YAML",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/history": {
+      "get": {
+        "tags": [
+          "观测数据"
+        ],
+        "summary": "历史采样（分钟级）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/import": {
+      "post": {
+        "tags": [
+          "设置"
+        ],
+        "summary": "导入配置文件",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/login": {
+      "post": {
+        "tags": [
+          "系统与鉴权"
+        ],
+        "summary": "用面板账号登录，成功后写会话 Cookie；失败次数与来源 IP 都受节流限制",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/logout": {
+      "post": {
+        "tags": [
+          "系统与鉴权"
+        ],
+        "summary": "退出当前会话",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/logs": {
+      "get": {
+        "tags": [
+          "日志审计"
+        ],
+        "summary": "面板日志（按级别与关键词过滤）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/logs/download": {
+      "get": {
+        "tags": [
+          "日志审计"
+        ],
+        "summary": "下载面板日志文件",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/logs/stream": {
+      "get": {
+        "tags": [
+          "日志审计"
+        ],
+        "summary": "面板日志实时流（SSE）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/match": {
+      "post": {
+        "tags": [
+          "代理规则"
+        ],
+        "summary": "模拟一条请求，看会被哪条规则接住",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/monitor/mute": {
+      "post": {
+        "tags": [
+          "监控体检"
+        ],
+        "summary": "静默告警一段时间",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/monitor/status": {
+      "get": {
+        "tags": [
+          "监控体检"
+        ],
+        "summary": "Prometheus、抓取目标、告警与面板角色状态",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/monitor/unmute": {
+      "post": {
+        "tags": [
+          "监控体检"
+        ],
+        "summary": "取消告警静默",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/notify/history": {
+      "get": {
+        "tags": [
+          "监控体检"
+        ],
+        "summary": "通知发送记录",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/notify/resend": {
+      "post": {
+        "tags": [
+          "监控体检"
+        ],
+        "summary": "重发某条通知",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/notify/test": {
+      "post": {
+        "tags": [
+          "监控体检"
+        ],
+        "summary": "发一条测试通知",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/openapi": {
+      "get": {
+        "tags": [
+          "系统与鉴权"
+        ],
+        "summary": "本 API 的 OpenAPI 描述（docs/openapi.json 的镜像）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/operator": {
+      "post": {
+        "tags": [
+          "系统与鉴权"
+        ],
+        "summary": "运维账号相关操作",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/panel-auth": {
+      "post": {
+        "tags": [
+          "系统与鉴权"
+        ],
+        "summary": "面板自身的鉴权方式与状态",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/qr": {
+      "get": {
+        "tags": [
+          "工具箱"
+        ],
+        "summary": "生成登录 / 分享二维码",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/routes": {
+      "post": {
+        "tags": [
+          "代理规则"
+        ],
+        "summary": "保存整张代理规则表；path 为 / 的规则会吃掉同域名其余路径，遮蔽时需带 force",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/routes/stats": {
+      "get": {
+        "tags": [
+          "代理规则"
+        ],
+        "summary": "规则命中统计（P50 / P95 / 最慢）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/rules/test": {
+      "post": {
+        "tags": [
+          "代理规则"
+        ],
+        "summary": "对单条规则做命中自测（不发真实流量）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/security/allow": {
+      "post": {
+        "tags": [
+          "安全"
+        ],
+        "summary": "把来源 IP 从黑名单移除",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/security/attempts": {
+      "get": {
+        "tags": [
+          "安全"
+        ],
+        "summary": "可疑访问记录（401 / 403 命中）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/security/deny": {
+      "post": {
+        "tags": [
+          "安全"
+        ],
+        "summary": "把来源 IP 加入黑名单（下发生效）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/selfcheck": {
+      "get": {
+        "tags": [
+          "监控体检"
+        ],
+        "summary": "一键体检：14 项覆盖版本、角色、Caddy、规则、遮蔽、重连、监控、磁盘等",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/selfcheck/history": {
+      "get": {
+        "tags": [
+          "监控体检"
+        ],
+        "summary": "体检历史（用于监控页的柱状图）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/sessions": {
+      "get": {
+        "tags": [
+          "系统与鉴权"
+        ],
+        "summary": "列出当前有效的登录会话（含 UA、IP、最近活动时间）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/sessions/revoke": {
+      "post": {
+        "tags": [
+          "系统与鉴权"
+        ],
+        "summary": "按会话 id 撤销单个登录",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/sessions/revoke-all": {
+      "post": {
+        "tags": [
+          "系统与鉴权"
+        ],
+        "summary": "撤销全部登录会话（含自己）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/sessions/revoke-others": {
+      "post": {
+        "tags": [
+          "系统与鉴权"
+        ],
+        "summary": "撤销除当前会话以外的全部登录",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/settings": {
+      "post": {
+        "tags": [
+          "设置"
+        ],
+        "summary": "保存面板设置（站点、安全、通知、监控嵌入等）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/shares": {
+      "get": {
+        "tags": [
+          "一次性质"
+        ],
+        "summary": "GET 列出现有一次性分享；POST 新建分享（到期自动从 Caddy 摘掉）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "一次性质"
+        ],
+        "summary": "GET 列出现有一次性分享；POST 新建分享（到期自动从 Caddy 摘掉）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/shares/{id}/delete": {
+      "get": {
+        "tags": [
+          "一次性质"
+        ],
+        "summary": "提前作废一条一次性分享链接（Caddy 里同步摘掉）",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "资源标识"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/state": {
+      "get": {
+        "tags": [
+          "其他"
+        ],
+        "summary": "一次性返回全部状态：设置、规则、出口运行态、Caddy 与监控态",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/system": {
+      "get": {
+        "tags": [
+          "系统与鉴权"
+        ],
+        "summary": "系统信息：版本、代码哈希、角色、实例名、数据目录等",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/totp/disable": {
+      "post": {
+        "tags": [
+          "安全"
+        ],
+        "summary": "关闭二次验证",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/totp/enable": {
+      "post": {
+        "tags": [
+          "安全"
+        ],
+        "summary": "校验一次性口令并启用二次验证",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/totp/recovery": {
+      "post": {
+        "tags": [
+          "安全"
+        ],
+        "summary": "生成 / 重新生成恢复码",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/totp/setup": {
+      "post": {
+        "tags": [
+          "安全"
+        ],
+        "summary": "生成二次验证密钥与扫码信息",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/traffic": {
+      "get": {
+        "tags": [
+          "观测数据"
+        ],
+        "summary": "最近的流量采样点",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/traffic/paths": {
+      "get": {
+        "tags": [
+          "观测数据"
+        ],
+        "summary": "热门路径与命中次数",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/tunnel": {
+      "post": {
+        "tags": [
+          "隧道出口"
+        ],
+        "summary": "兼容旧版的出口写入入口",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/tunnel/start": {
+      "post": {
+        "tags": [
+          "隧道出口"
+        ],
+        "summary": "兼容旧版：启动出口",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/tunnel/stop": {
+      "post": {
+        "tags": [
+          "隧道出口"
+        ],
+        "summary": "兼容旧版：停止出口",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/tunnels": {
+      "get": {
+        "tags": [
+          "隧道出口"
+        ],
+        "summary": "读取或新建 / 更新出口（cloudflared 实例）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "隧道出口"
+        ],
+        "summary": "读取或新建 / 更新出口（cloudflared 实例）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/tunnels/{id}/{id2}": {
+      "get": {
+        "tags": [
+          "隧道出口"
+        ],
+        "summary": "单条出口的按需动作：{id2} 取 start / stop / restart / delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "资源标识"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/tunnels/start-all": {
+      "post": {
+        "tags": [
+          "隧道出口"
+        ],
+        "summary": "启动全部出口",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/tunnels/stats": {
+      "get": {
+        "tags": [
+          "隧道出口"
+        ],
+        "summary": "出口流量统计（按域名与时间窗）",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/tunnels/stop-all": {
+      "post": {
+        "tags": [
+          "隧道出口"
+        ],
+        "summary": "停止全部出口",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/viewer": {
+      "post": {
+        "tags": [
+          "系统与鉴权"
+        ],
+        "summary": "只读账号的登录与权限",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
+    "/api/ws-test": {
+      "post": {
+        "tags": [
+          "工具箱"
+        ],
+        "summary": "WebSocket 升级自测",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    }
+  }
+}

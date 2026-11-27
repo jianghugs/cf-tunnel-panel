@@ -108,7 +108,7 @@ docker run --rm --network host -v "$PWD":/w -v /tmp/jsd:/j -w /w \
   node:22-alpine node test/dom.test.cjs
 ```
 
-基线（2026-11-26，v0.29.39）：API 367/367、DOM 236/236、e2e 39/39。
+基线（2026-11-26，v0.29.39）：API 367/367、DOM 236/236、e2e 39/39。另有两条不依赖面板的静态自检：`npm run test:i18n`（字典重复键/空译文）与 `npm run test:openapi`（代码里的 /api 路由必须都在 docs/openapi.json 里，改了接口记得 `node tools/openapi.js --gen`）。
 
 **第三套 `e2e-caddy.mjs` 的真相**（原来这里写「起临时 Caddy :8180 / admin :20290，不碰生产」，是错的）：脚本里没有任何 `spawn caddy`，它用 basic auth 直连本机 leader 面板，`POST /api/routes` 把 6 条探针规则（`e2e-strip` / `e2e-keep` / `e2e-auth` / `e2e-hostA` / `e2e-hostB` / `e2e-ws`，upstream 指向脚本自起的本地 HTTP+WS 服务）**塞进线上规则表**，由面板推给线上 Caddy（127.0.0.1:20190）；同时临时打开「维护模式」、把 `127.0.0.1/32` 拉进 IP 黑名单。快照落在 `/tmp/e2e-routes-<pid>.json`，`finally` 里还原。**跑完要自己复核一遍**：规则条数与跑前一致、`maintenance.on=false`、`ipDeny` 为空。
 

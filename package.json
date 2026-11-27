@@ -15,10 +15,11 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "npm run test:i18n && npm run test:api && npm run test:dom",
+    "test": "npm run test:i18n && npm run test:openapi && npm run test:api && npm run test:dom",
     "test:i18n": "node tools/i18n-check.js",
     "test:api": "node test/api.test.mjs",
-    "test:dom": "node test/dom.test.cjs"
+    "test:dom": "node test/dom.test.cjs",
+    "test:openapi": "node tools/openapi.js --check"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
