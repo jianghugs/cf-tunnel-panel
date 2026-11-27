@@ -2,6 +2,18 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.53
+
+### 修 0.29.52 的一个回归：审计日期列表 500
+
+**症状**：`GET /api/audit/days` 返回 `{"ok":false,"error":"Cannot find module './core/audit'"}`，审计页的日期下拉是空的。
+
+**原因**：0.29.52 把审计相关路由从 `server.js` 搬到 `src/routes/observe.js`，块里那句 `require('./core/audit').KEEP_DAYS` 是按 `src/` 目录写的相对路径；文件搬到 `src/routes/` 之后要写成 `../core/audit`。搬别的路由时没触发，只有这一处是内联 require 而不是顶部统一引入。
+
+**修法**：改成 `require('../core/audit').KEEP_DAYS`。
+
+**验证**：预览实例 `/api/audit/days` 返回 2026-11-25/26/27 三天记录；发布后对生产复跑 api 套件。
+
 ## v0.29.52
 
 ### 重构：把体检监控、观测数据、代理规则三组路由搬出 server.js
