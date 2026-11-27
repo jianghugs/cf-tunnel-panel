@@ -1,25 +1,26 @@
 'use strict';
 /**
- * 隧道出口路由（多出口 CRUD + 单出口动作 + 旧版单隧道接口）。
- *
- * 为什么要整块搬到模块里、而不是只搬 `/api/tunnels/start-all`：
- * 单出口动作走的是正则 `/^\/api\/tunnels\/([\w-]+)(?:\/(start|stop|restart|delete))?$/`，
- * 它会先吃掉 `/api/tunnels/start-all`（把 start-all 当成 id）。所以这几条必须在**同一个
- * 匹配序列**里按「精确路径在前、正则在后」的顺序处理，拆出去就会互相抢。
+ * tunnels 相关路由（C8 拆分自 src/server.js，块内逻辑逐行未改）。
+ * 公共依赖统一在 ./_deps.js（十份样板合并后的唯一一份）。
  */
-const path = require('path');
-const fs = require('fs');
-
-const _state = require('../core/state');
-const _registry = require('../core/registry');
-const _tunnels = require('../core/tunnels');
-const _util = require('../core/util');
-
-const { newTunnel, saveState } = _state;
-const state = _state.stateProxy;
-const { firstTunnel, runtimes, tunnelById, tunnelRt } = _registry;
-const { applyTunnelFields, publicTunnels, runtimeOf, startAll, startTunnel, stopAll, stopTunnel } = _tunnels;
-const { log, readBody, sendJson } = _util;
+const {
+  readBody,
+  sendJson,
+  newTunnel,
+  saveState,
+  state,
+  firstTunnel,
+  runtimes,
+  tunnelById,
+  tunnelRt,
+  applyTunnelFields,
+  publicTunnels,
+  runtimeOf,
+  startAll,
+  startTunnel,
+  stopAll,
+  stopTunnel,
+} = require('./_deps');
 
 async function handle(p, req, res, url) {
   // ---- 多隧道出口 CRUD
