@@ -2,6 +2,20 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.65
+
+### 新增
+- 面板能看 **Caddy 自身日志**了。0.29.64 把 Caddy 的启动/admin/证书日志拆去 caddy.log 之后，界面上就再也看不到它们；这次补回：观测页新增「Caddy 自身日志」卡片，默认折叠，可切 100/200/500 行，可只看错误级别。
+- 新接口 `GET /api/caddy/log?n=200&onlyError=1`：读文件尾部（默认 512KB，上限 2MB），逐行解析成时间/级别/logger/消息；文件不存在时给「还没有 caddy.log —— Caddy 大概刚启动」而不是报错。
+
+### 修复
+- `src/core/paths.js` 新增 `CADDY_OWN_LOG_FILE`（`DATA_DIR/caddy-logs/caddy.log`）。`otherLogPathForCaddy()` 是给 Caddy 配置用的（容器内 `/logs` 视角），面板容器里没有 `/logs`，直接读会永远 `exists:false`——第一版就踩了这个坑。
+
+### 验证
+- `tools/check.sh` 五项全绿（require 自检 / i18n 未收录 0 / openapi 93 路径 100 操作 / 告警副本一致 / ESLint）
+- 预览实例：`/api/caddy/log?n=4` 返回真实行（文件 613133 字节）；`/api/caddy/log?onlyError=1` 返回空 + 无错误提示（当前 caddy.log 只有 info）
+- 生产 leader 8095：`test/api.test.mjs` 367/367
+
 ## v0.29.64
 
 ## Caddy 日志拆成两个文件：access.log 只留访问日志
