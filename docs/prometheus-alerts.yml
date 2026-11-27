@@ -149,3 +149,50 @@ groups:
           description: |
             设置页「通知发送记录」里能看到失败原因（HTTP 码/超时/地址校验）。
             注意钉钉/飞书开了「加签」时密钥也要填对，否则会被判为失败。
+
+  # ------------------------------------------------ 第四轮审计补的两类（v0.29.59）
+  - name: cf-tunnel-panel-health
+    rules:
+      - alert: SelfcheckFailing
+        expr: cf_selfcheck_fails > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "体检有失败项（{{ $value }} 项）"
+          description: |
+            面板的 /api/selfcheck 连续 10 分钟存在失败项。打开面板「监控 → 一键体检」看是哪一项：
+            常见是 Caddy 下发失败、Prometheus 抓不到、隧道出口离线。
+            `curl -s -u admin:口令 http://127.0.0.1:8090/api/selfcheck | head -c 400`
+
+      - alert: UnhandledRejections
+        expr: increase(cf_unhandled_rejections_total[10m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "面板出现未处理的 Promise 拒绝"
+          description: |
+            10 分钟内有 {{ $value }} 次未处理拒绝。进程没崩（有兜底），但说明某条异步路径漏了 catch。
+            查日志：`docker logs --since 10m cf-tunnel-panel-* | grep '未处理的 Promise 拒绝'`
+
+      - alert: CaddyPushFailures
+        expr: increase(cf_caddy_push_failures_total[10m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Caddy 配置下发失败（{{ $value }} 次/10 分钟）"
+          description: |
+            规则改了但没进 Caddy，或者 Caddy 本身不对。先看 `cf_caddy_ok` 是否为 0，再看面板日志里的 "HTTP 400"。
+            注意：/load 失败会把 Caddy 的 server 停掉 → 全站 502（v0.29.46 踩过一次）。
+
+      - alert: EventLoopLagHigh
+        expr: cf_eventloop_p99_ms > 200
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "面板事件循环延迟 p99 {{ $value }}ms"
+          description: |
+            大概率是读大文件（访问日志）或体检并发太重。看 cf_process_rss_bytes 是否也在涨。

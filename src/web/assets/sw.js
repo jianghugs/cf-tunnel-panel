@@ -1,6 +1,8 @@
 // 只缓存静态资源，页面与 /api 一律走网络（配置随时会变，缓存界面会让人抓狂）
-const CACHE = 'cfp-static-v2';
-const ASSETS = ['/assets/app.css', '/assets/app.js', '/assets/icon.svg', '/assets/offline.html'];
+// v3：只预缓存"路径固定、内容稳定"的两样。app.css / app.js 的请求带 ?v=<codehash>，
+// 预缓存裸路径永远命不中（白占空间），它们交给下面的 runtime 缓存按完整 URL 收。
+const CACHE = 'cfp-static-v3';
+const ASSETS = ['/assets/icon.svg', '/assets/offline.html'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });

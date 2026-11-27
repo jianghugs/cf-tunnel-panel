@@ -34,6 +34,12 @@ async function handle(p, req, res, url) {
     }
     const manualIds = String(url.searchParams.get('ids') || '').trim();
     const { out } = await require('../core/runtime').runSelfcheckOnce({ ids, scope: (scope === 'quick' && !manualIds) ? 'quick' : '' });
+    try {
+      const _m = require('../core/metrics');
+      const _ck = out.checks || [];
+      _m.set('selfcheck_fails', _ck.filter((c) => c.status === 'fail').length);
+      _m.set('selfcheck_warn', _ck.filter((c) => c.status === 'warn').length);
+    } catch { /* 指标失败不影响体检 */ }
     const only = String(url.searchParams.get('only') || '').toLowerCase();
     if (only === 'bad') {
       const bad = (out.checks || []).filter((c) => c.status !== 'ok');

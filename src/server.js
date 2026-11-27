@@ -194,8 +194,45 @@ async function handler(req, res) {
   }
 
   if (p === '/metrics') {
+    // 公网封禁：Cloudflare 经隧道转发时必带 cf-connecting-ip / cf-ray。
+    // 本机直连与 Prometheus 抓取（127.0.0.1:8080）都不带这两个头，所以监控不受影响。
+    if (req.headers['cf-connecting-ip'] || req.headers['cf-ray']) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+      return res.end('not found');
+    }
     res.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4; charset=utf-8', 'Cache-Control': 'no-store' });
-    return res.end(metricsText() + exitMetricsLines());
+    let extra = '';
+    try {
+      const m = require('./core/metrics').snapshot();
+      const g = m.gauges, c = m.counters;
+      extra += '# HELP cf_caddy_push_ms 最近一次 Caddy 配置下发耗时（毫秒）\n';
+      extra += '# TYPE cf_caddy_push_ms gauge\n';
+      extra += 'cf_caddy_push_ms ' + (g.caddy_push_ms || 0) + '\n';
+      extra += '# HELP cf_caddy_push_failures_total Caddy 配置下发失败累计\n';
+      extra += '# TYPE cf_caddy_push_failures_total counter\n';
+      extra += 'cf_caddy_push_failures_total ' + (c.caddy_push_failures || 0) + '\n';
+      extra += '# HELP cf_selfcheck_fails 最近一次体检的失败项数\n';
+      extra += '# TYPE cf_selfcheck_fails gauge\n';
+      extra += 'cf_selfcheck_fails ' + (g.selfcheck_fails || 0) + '\n';
+      extra += '# HELP cf_selfcheck_warn 最近一次体检的警告项数\n';
+      extra += '# TYPE cf_selfcheck_warn gauge\n';
+      extra += 'cf_selfcheck_warn ' + (g.selfcheck_warn || 0) + '\n';
+      extra += '# HELP cf_unhandled_rejections_total 未处理的 Promise 拒绝累计\n';
+      extra += '# TYPE cf_unhandled_rejections_total counter\n';
+      extra += 'cf_unhandled_rejections_total ' + (c.unhandled_rejections || 0) + '\n';
+      extra += '# HELP cf_process_rss_bytes 进程常驻内存\n';
+      extra += '# TYPE cf_process_rss_bytes gauge\n';
+      extra += 'cf_process_rss_bytes ' + m.rss + '\n';
+      if (m.loop) {
+        extra += '# HELP cf_eventloop_p99_ms 事件循环延迟 p99（毫秒）\n';
+        extra += '# TYPE cf_eventloop_p99_ms gauge\n';
+        extra += 'cf_eventloop_p99_ms ' + m.loop.p99.toFixed(1) + '\n';
+        extra += '# HELP cf_eventloop_max_ms 事件循环延迟最大值（毫秒）\n';
+        extra += '# TYPE cf_eventloop_max_ms gauge\n';
+        extra += 'cf_eventloop_max_ms ' + m.loop.max.toFixed(1) + '\n';
+      }
+    } catch (e) { /* 指标失败不影响主指标 */ }
+    return res.end(metricsText() + exitMetricsLines() + extra);
   }
 
   // ---------- 登录页与会话接口（必须在鉴权门之前）----------
@@ -726,3 +763,12 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
   process.on(sig, () => { stopAll(); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 3000); });
 }
 process.on('uncaughtException', (e) => log(`未捕获异常: ${e.stack || e.message}`, 'panel'));
+// Node 22 默认把未处理的 Promise 拒绝当致命错误（进程直接退），面板会被容器拉起来但租约掉、cloudflared 重连，
+// 而且没有任何痕迹。这里兜住：记一条日志 + 计数（/metrics 与告警都能看到），进程继续跑。
+let _unhandled = 0;
+process.on('unhandledRejection', (e) => {
+  _unhandled += 1;
+  try { require('./core/metrics').inc('unhandled_rejections'); } catch { /* 指标失败不影响 */ }
+  const detail = (e && (e.stack || e.message)) || String(e);
+  log(`未处理的 Promise 拒绝（第 ${_unhandled} 次）: ${detail}`, 'panel');
+});

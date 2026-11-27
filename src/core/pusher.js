@@ -25,6 +25,8 @@ function schedulePush(delay = 500) {
 // 要按真实访客做 IP 白名单/黑名单，必须先让 Caddy 信任这些代理段。
 // 段表会变（Cloudflare 偶尔新增），可用环境变量 CLOUDFLARE_IPS 覆盖（逗号分隔）。
 async function pushOnce() {
+  const _m = require('./metrics');
+  const _t0 = Date.now();
   let cfg;
   try {
     cfg = buildCaddyConfig();
@@ -68,11 +70,14 @@ async function pushOnce() {
     caddy.ok = true;
     caddy.error = null;
     caddy.lastPush = Date.now();
+    _m.set('caddy_push_ms', Date.now() - _t0);
     caddy.routeCount = cfg.apps.http.servers.main.routes.length - 1;
     log(`已下发 ${caddy.routeCount} 条代理规则到 Caddy（监听 ${state.settings.caddyListen}）`, 'caddy');
   } catch (e) {
     caddy.ok = false;
     caddy.error = e.message;
+    _m.inc('caddy_push_failures');
+    _m.set('caddy_push_ms', Date.now() - _t0);
     log(`Caddy 配置下发失败: ${e.message}`, 'caddy');
   }
   return caddy;

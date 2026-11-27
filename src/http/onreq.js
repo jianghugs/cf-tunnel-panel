@@ -81,6 +81,21 @@ function create(deps) {
       } catch { /* 记账失败不影响请求 */ }
     });
 
+    // 跨站防护：写操作如果带了 Origin/Referer 且与当前 Host 不同源 → 403。
+    // 只靠 SameSite=Lax 挡不住"同站子域"与老浏览器；curl/测试脚本不带头，照常放行。
+    if (req.method !== 'GET' && req.method !== 'HEAD' && String(req.url || '').startsWith('/api/')) {
+      const ref = String(req.headers.origin || req.headers.referer || '');
+      if (ref) {
+        let rh = '';
+        try { rh = new URL(ref).host.toLowerCase(); } catch { rh = ''; }
+        const host = String(req.headers.host || '').toLowerCase();
+        if (rh && host && rh !== host) {
+          res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
+          return res.end('{"ok":false,"error":"跨站请求被拒绝（Origin 与 Host 不一致）"}');
+        }
+      }
+    }
+
     if (String(req.url || '').startsWith('/api/') && deps.rateLimited(ip)) {
       res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Retry-After': '10' });
       return res.end('{"ok":false,"error":"请求太频繁，稍后再试"}');
