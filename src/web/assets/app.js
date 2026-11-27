@@ -693,12 +693,42 @@ document.addEventListener('click', (e) => {
   }
 }, true);
 
+// ---- 新版本提示：每 6 小时问一次，有新版就在版本号后面挂个角标
+function checkUpdate() {
+  const KEY = 'cfp-ver-check';
+  try {
+    const last = Number(localStorage.getItem(KEY) || 0);
+    if (Date.now() - last < 6 * 3600e3) return;
+  } catch (e) { /* 隐私模式忽略 */ }
+  fetch('/api/version/latest', { headers: { Accept: 'application/json' } })
+    .then((r) => r.json())
+    .then((d) => {
+      try { localStorage.setItem(KEY, String(Date.now())); } catch (e) { /* ignore */ }
+      if (!d || !d.ok || !d.hasUpdate) return;
+      const ver = document.querySelector('.side .brand .ver');
+      if (!ver || document.querySelector('#verBadge')) return;
+      const a = document.createElement('a');
+      a.id = 'verBadge';
+      a.className = 'ver-badge';
+      a.href = d.url || '#';
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.title = (typeof LANG !== 'undefined' && LANG === 'en')
+        ? 'New version v' + d.latest + ' (running v' + d.current + ')'
+        : '有新版本 v' + d.latest + '（当前 v' + d.current + '）';
+      a.textContent = '↑ v' + d.latest;
+      ver.parentNode.insertBefore(a, ver.nextSibling);
+    })
+    .catch(() => { /* 失败静默 */ });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // PWA：装上后像 App 一样打开；只缓存静态资源，配置类请求永不缓存
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
     navigator.serviceWorker.register('/assets/sw.js').catch(() => {});
   }
   initTheme();
+  checkUpdate();
   const y = $('#year');
   if (y) y.textContent = new Date().getFullYear();
   // 侧栏健康指示：每页都刷一次，失败静默

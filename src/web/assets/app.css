@@ -735,3 +735,18 @@ details.longtail summary { cursor: pointer; color: var(--dim); font-size: 12px; 
 details.longtail[open] summary { margin-bottom: 6px; }
 .gnote { margin: 0 0 8px; }
 table { font-variant-numeric: tabular-nums; }
+
+/* 侧栏：有新版本时的角标 */
+.side .brand .ver-badge {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 1px 7px;
+  border: 1px solid var(--acc-line);
+  border-radius: 999px;
+  background: var(--acc-soft);
+  color: var(--acc);
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+  text-decoration: none;
+}
+.side .brand .ver-badge:hover { background: var(--acc); color: #fff; text-decoration: none; }

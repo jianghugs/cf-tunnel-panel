@@ -67,6 +67,47 @@ function audit(req, action, target, status) {
   } catch (e) {}
 }
 
+// ---- 新版本检查（GitHub releases/latest，6 小时缓存，失败静默）
+const GH_REPO = 'jianghugs/cf-tunnel-panel';
+let _verCache = { at: 0, data: null };
+function cmpVer(a, b) {
+  const pa = String(a || '').split('.').map((x) => parseInt(x, 10) || 0);
+  const pb = String(b || '').split('.').map((x) => parseInt(x, 10) || 0);
+  for (let i = 0; i < 3; i += 1) {
+    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
+  }
+  return 0;
+}
+async function latestRelease() {
+  if (_verCache.data && Date.now() - _verCache.at < 6 * 3600e3) return _verCache.data;
+  const url = 'https://api.github.com/repos/' + GH_REPO + '/releases/latest';
+  let body = null;
+  const hdr = { 'User-Agent': 'cf-tunnel-panel', Accept: 'application/vnd.github+json' };
+  try {
+    const r = await getV4(url, { timeout: 8000, headers: hdr, maxBytes: 256 * 1024 });
+    if (r.status === 200) body = r.body;
+  } catch (e) {
+    try {
+      const r = await fetch(url, { headers: hdr, signal: AbortSignal.timeout(8000) });
+      if (r.ok) body = await r.text();
+    } catch (e2) { body = null; }
+  }
+  if (!body) throw new Error('读取 GitHub 版本信息失败');
+  let j = null;
+  try { j = JSON.parse(body); } catch (e) { throw new Error('GitHub 返回的不是 JSON'); }
+  const tag = String(j.tag_name || '').replace(/^v/, '');
+  if (!tag) throw new Error('GitHub 没有返回版本号');
+  const data = {
+    latest: tag,
+    url: j.html_url || ('https://github.com/' + GH_REPO + '/releases/latest'),
+    publishedAt: j.published_at || null,
+    notes: String(j.body || '').slice(0, 1200),
+  };
+  _verCache = { at: Date.now(), data };
+  return data;
+}
+
 async function handle(p, req, res, url) {
   if (p === '/api/versions' && req.method === 'GET') {
     const imgs = await localImages();
@@ -124,6 +165,20 @@ async function handle(p, req, res, url) {
     log(`回滚请求已排队：${VERSION} → ${want}（等宿主机 ops-agent 执行）`, 'panel');
     sendJson(res, 200, { ok: true, queued: true, version: want });
     return true;
+  }
+
+  if (p === '/api/version/latest' && req.method === 'GET') {
+    try {
+      const rel = await latestRelease();
+      return sendJson(res, 200, {
+        ok: true, current: VERSION, latest: rel.latest,
+        hasUpdate: cmpVer(rel.latest, VERSION) > 0,
+        url: rel.url, publishedAt: rel.publishedAt, notes: rel.notes,
+        checkedAt: Date.now(),
+      });
+    } catch (e) {
+      return sendJson(res, 200, { ok: false, current: VERSION, error: e.message, checkedAt: Date.now() });
+    }
   }
 
   return false;
