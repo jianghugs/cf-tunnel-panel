@@ -2,6 +2,26 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.57
+
+### 重构
+- 隧道路由整组搬出 server.js：`/api/tunnels`（GET/POST）、`/api/tunnels/start-all|stop-all`、单出口动作正则、旧 `/api/tunnel*` 一起进了 `src/routes/tunnels.js`。这几条必须待在同一匹配序列里——单出口动作的正则会先把 `start-all` 当成 id 吃掉，拆开就互相抢。`src/server.js` 728 行（本轮起点 2380 行）。
+- 至此 server.js 只剩：登录/登出与会话门、静态资源与页面壳、`/api/*` 模块调度、少量与 state/pusher 紧耦合的接口。
+
+### 工具与 CI
+- 新增 `tools/check-requires.js`：检查 ① 相对 require 能否解析到真实文件 ② Node 内置模块（net/dns/http/crypto/fs/path…）被用却没 require。
+  这类问题 `node --check` 完全看不出来，只在跑到那一行才抛 `net is not defined`——0.29.55 的「一键封禁」500 就是这么来的。
+- 接进 `npm test` 首位（`test:requires`），并补上 CI 的语法检查漏项：拆包后新增的 `src/routes/*.js`、`src/http/*.js` 之前根本没被 `node --check` 覆盖。
+
+### 测试
+- `test/dom.test.cjs` 6 处「点击后硬等 120~200ms」改成 `waitFor(条件)`，两处手写轮询也换成 waitFor；剩下 3 处 sleep 在 waitFor/pollTick 内部，是本该有的间隔。
+
+### 验证
+- DOM 对预览实例：236/236
+- API 对生产：367/367
+- API 对预览（CADDY_ADMIN 指死端口）：354/367，13 条全是既有的「真 Caddy 依赖」用例，无新增
+- i18n：重复键 0 / 空译文 0 / 未收录中文 0；openapi：89 路径 95 操作全覆盖
+
 ## v0.29.56
 
 ## 修 0.29.55 的回归：一键封禁 500
