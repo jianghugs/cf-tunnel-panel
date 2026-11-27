@@ -2,6 +2,43 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.61
+
+## v0.29.61
+
+### 新增：面板内的「版本与回滚」
+
+设置页多了一个「版本」分区，能看到本机所有 `cf-tunnel-panel:<版本>` 镜像、构建时间与大小，并标出当前在跑的是哪个。要回滚就输入目标版本号、再输入一遍确认，点了之后排队执行，页面显示进度和上一次结果。
+
+以前回滚只能 SSH 上去敲 `tools/rollback.sh <版本>`，0.29.46 那次事故就是靠手工起临时实例推配置救回来的，前后十几分钟。现在面板上点两下就行。
+
+### 为什么拆成两段
+
+面板容器里没有 docker CLI，也不该给它 docker 特权。所以：
+
+1. 容器内只做两件事——用 `/var/run/docker.sock` 的**只读** HTTP API 读镜像列表，把回滚请求写成 `data/ops/rollback.json`；
+2. 宿主机 cron 每分钟跑 `tools/ops-agent.sh`，读到排队文件才真正执行 `tools/rollback.sh <版本>`（重标 `:local` → 滚动升级 → 校验内网 8080 与公网），结果写 `data/ops/rollback-result.json`。
+
+容器保持非特权，真正动 docker 的动作发生在宿主机。
+
+### 接口
+
+- `GET /api/versions` —— 当前版本 + 本机镜像列表 + 排队中的请求 + 上次结果
+- `GET /api/versions/rollback` —— 只看排队与结果
+- `POST /api/versions/rollback` —— `{version, confirm}`，`confirm` 必须与 `version` 完全一致；版本格式、是否存在该镜像、是否等于当前版本都会校验；通过后写队列并记审计
+
+OpenAPI 清单随之更新到 91 条路径 / 98 个操作。
+
+### 验证
+
+- 预览实例（生产数据副本）：`GET /api/versions` 列出 `0.29.60 / local / 0.29.59`，`available:true`；`confirm` 不符时返回「二次确认没对上」；镜像不存在时返回明确错误。
+- 页面：设置页有「版本」分区与导航项，`settings.js` 已带 `loadVersions`。
+- 静态检查 `bash tools/check.sh` 五项全绿（requires / i18n / openapi 91 路径 / alerts / eslint）。
+
+### 注意
+
+`data/ops/rollback.json` 一旦出现，**1 分钟内就会真的回滚**。回滚会重建容器，页面会 502 十几秒，这是正常的。
+
 ## v0.29.60
 
 ## v0.29.60
