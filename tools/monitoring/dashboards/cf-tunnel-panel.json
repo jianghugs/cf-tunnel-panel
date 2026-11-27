@@ -701,6 +701,460 @@
           "legendFormat": "{{name}} 错误"
         }
       ]
+    },
+    {
+      "type": "stat",
+      "title": "体检失败项",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom-main"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 0,
+        "y": 108
+      },
+      "description": "最近一次一键体检的失败项数，>0 说明有真问题（对应告警 SelfcheckFailing）",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom-main"
+          },
+          "expr": "max(cf_selfcheck_fails)",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "id": 14
+    },
+    {
+      "type": "stat",
+      "title": "体检警告项",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom-main"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 5,
+        "y": 108
+      },
+      "description": "最近一次一键体检的警告项数",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom-main"
+          },
+          "expr": "max(cf_selfcheck_warn)",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "id": 15
+    },
+    {
+      "type": "stat",
+      "title": "Caddy 下发耗时",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom-main"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 10,
+        "y": 108
+      },
+      "description": "最近一次把路由推给 Caddy 的耗时（毫秒），超过 2 秒就要看 Caddy 是不是忙",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom-main"
+          },
+          "expr": "max(cf_caddy_push_ms)",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "id": 16
+    },
+    {
+      "type": "stat",
+      "title": "进程内存",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom-main"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 15,
+        "y": 108
+      },
+      "description": "面板 Node 进程 RSS（MB）",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom-main"
+          },
+          "expr": "max(cf_process_rss_bytes) / 1024 / 1024",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "id": 17
+    },
+    {
+      "type": "stat",
+      "title": "事件循环 p99",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom-main"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 20,
+        "y": 108
+      },
+      "description": "事件循环延迟 p99（毫秒），>200 说明主线程被卡住（对应告警 EventLoopLagHigh）",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom-main"
+          },
+          "expr": "max(cf_eventloop_p99_ms)",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "id": 18
+    },
+    {
+      "type": "timeseries",
+      "title": "Caddy 下发失败与未处理拒绝",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom-main"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 112
+      },
+      "description": "最近 10 分钟增量：Caddy 下发失败次数、未处理的 Promise 拒绝次数（两者都应为 0）",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom-main"
+          },
+          "expr": "increase(cf_caddy_push_failures_total[10m])",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom-main"
+          },
+          "expr": "increase(cf_unhandled_rejections_total[10m])",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 19
+    },
+    {
+      "type": "timeseries",
+      "title": "下发耗时与事件循环延迟",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom-main"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 112
+      },
+      "description": "毫秒。下发耗时看 Caddy 是否变慢，事件循环延迟看面板自己是否被卡",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom-main"
+          },
+          "expr": "max(cf_caddy_push_ms)",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom-main"
+          },
+          "expr": "max(cf_eventloop_p99_ms)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 20
+    },
+    {
+      "type": "timeseries",
+      "title": "日志与内存占用",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom-main"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 120
+      },
+      "description": "MB。cf_caddy_log_bytes 在接近 40MB（10MB × 3 份 + caddy.log）时说明要靠 prune-logs 或调小 roll_size",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom-main"
+          },
+          "expr": "max(cf_caddy_log_bytes) / 1024 / 1024",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom-main"
+          },
+          "expr": "max(cf_process_rss_bytes) / 1024 / 1024",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 21
+    },
+    {
+      "type": "timeseries",
+      "title": "日志文件数",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom-main"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 120
+      },
+      "description": "caddy-logs 目录下的文件数（access.log + caddy.log + 各自的 .gz），正常 4–10",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom-main"
+          },
+          "expr": "max(cf_caddy_log_files)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 22
     }
   ],
   "uid": "cfp-main"
