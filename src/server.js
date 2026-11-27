@@ -101,6 +101,10 @@ const { pageShell, readPage, serveText, loginPage } = _web;
 const _monitor = require('./core/monitor');
 const { seenCaddyOk, shareJanitor, shareUrl, startMonitor } = _monitor;
 
+const _httpStatic = require('./http/static');
+const _httpBoot = require('./http/boot');
+const _httpOnReq = require('./http/onreq');
+
 async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const p = url.pathname;
@@ -239,32 +243,10 @@ async function handler(req, res) {
     return sendJson(res, 200, { ok: true });
   }
 
-  // 静态资源不需要登录：登录页自己也要用 app.css，而且它们不含任何密钥。
+  // 静态资源与首帧脚本都免登录：登录页自己也要用 app.css，而且它们不含任何密钥。
   // 放在鉴权之前还有个好处：Cloudflare 能把这些 URL 当公开资源缓存。
-  // 语言包 + 字典：必须是外部脚本（CSP 不允许内联），也必须在鉴权之前（登录页要用）
   if (p === '/boot.js' && (req.method === 'GET' || req.method === 'HEAD')) {
-    const lg = langOf(req);
-    // 首帧主题：放在 boot.js 里（CSP 不允许内联），页面把它放在样式表之前加载，
-    // 这样 localStorage 里存的主题在第一次绘制前就已经贴到 <html data-theme> 上，不会闪一下。
-    const js = 'try{var t=localStorage.getItem("cfp-theme");'
-      + 'if(!t)t=(window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches)?"light":"dark";'
-      + 'document.documentElement.setAttribute("data-theme",t)}catch(e){}'
-      + `window.__CFP_LANG=${JSON.stringify(lg)};window.__CFP_DICT=${_i18n.clientDict()};`;
-    const buf = Buffer.from(js);
-    const ae = String(req.headers['accept-encoding'] || '');
-    const gz = buf.length > 1024 && /gzip/.test(ae);
-    const out = gz ? zlib.gzipSync(buf, { level: 6 }) : buf;
-    const head = {
-      'Content-Type': 'application/javascript; charset=utf-8',
-      'Cache-Control': 'no-store',
-      'X-Content-Type-Options': 'nosniff',
-      Vary: 'Accept-Encoding',
-    };
-    if (gz) head['Content-Encoding'] = 'gzip';
-    head['Content-Length'] = out.length;
-    res.writeHead(200, head);
-    res.end(out);
-    return;
+    return _httpBoot.serve(req, res, { lang: langOf(req), dict: _i18n.clientDict() });
   }
 
   // ---------- Alertmanager 回调（用自己的令牌，不依赖面板登录）----------
@@ -299,19 +281,7 @@ async function handler(req, res) {
   }
 
   if (p.startsWith('/assets/') && (req.method === 'GET' || req.method === 'HEAD')) {
-    const name = path.basename(p.slice('/assets/'.length));
-    const file = path.join(ASSET_DIR, name);
-    if (fs.existsSync(file) && fs.statSync(file).isFile()) {
-      const type = ASSET_TYPES[path.extname(name).toLowerCase()] || 'application/octet-stream';
-      // 页面引用资源时带 ?v=<代码指纹>：URL 随代码变化，可以放心给「一年 + immutable」
-      const hashed = /[?&]v=/.test(req.url || '');
-      const cc = hashed ? 'public, max-age=31536000, immutable' : 'public, max-age=300';
-      const cdn = hashed ? 'public, max-age=31536000' : 'public, max-age=86400';
-      return serveText(req, res, fs.readFileSync(file), type, cc,
-        { 'CDN-Cache-Control': cdn, 'Cloudflare-CDN-Cache-Control': cdn });
-    }
-    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-    return res.end('404');
+    return _httpStatic.serveAsset(req, res, p, { assetDir: ASSET_DIR, assetTypes: ASSET_TYPES });
   }
 
   const auth = checkAuth(req);
@@ -2234,43 +2204,18 @@ function migrateSecrets() {
   if (changed) saveState('migrate-secrets');
 }
 migrateSecrets();
-const onReq = (req, res) => {
-  const ip = (req.socket && req.socket.remoteAddress) || 'unknown';
-  const t0 = Date.now();
-  const path0 = String(req.url || '').split('?')[0];
-  // 审计：只记"会被记性"的请求 —— 改东西的、和鉴权相关的、以及任何失败的 API 调用
-  res.on('finish', () => {
-    try {
-      const skip = path0 === '/metrics' || path0 === '/badge.svg' || path0.startsWith('/assets/') || path0 === '/boot.js' ||
-        path0.startsWith('/__bench/') || path0 === '/api/audit' || path0 === '/api/audit.csv' || path0 === '/api/logs' || path0 === '/api/logs/stream';
-      // 面板自身请求计数（v0.19.2）：静态资源与探针端点不算，避免健康检查把 2xx 刷成噪声
-      const probePath = path0 === '/healthz' || path0 === '/metrics' || path0 === '/badge.svg' || path0.startsWith('/assets/') || path0.startsWith('/__bench/');
-      if (!probePath) {
-        try { countPanelReq(res.statusCode, path0); } catch {}
-      }
-      if (skip) return;
-      if (String(req.headers['x-cfp-test'] || '') === '1') return;   // 测试流量不写审计
-      const mutating = req.method !== 'GET' && req.method !== 'HEAD';
-      const failed = res.statusCode >= 400 && path0.startsWith('/api');
-      if (!mutating && !failed) return;
-      auditRecord({
-        at: t0, actor: req.__who || '(未登录)', ip: clientIpOf(req),
-        method: req.method, path: path0, status: res.statusCode, ms: Date.now() - t0,
-        action: res.statusCode < 400 ? actionOf(req.method, path0) : `${req.method} ${path0}（失败）`,
-        ok: res.statusCode < 400,
-        mutating: _audit.isMutation(req.method, path0),
-      });
-    } catch { /* 记账失败不影响请求 */ }
-  });
-  if (String(req.url || '').startsWith('/api/') && rateLimited(ip)) {
-    res.writeHead(429, { 'Content-Type': 'application/json; charset=utf-8', 'Retry-After': '10' });
-    return res.end('{"ok":false,"error":"请求太频繁，稍后再试"}');
-  }
-  handler(req, res).catch((e) => {
-    log(`请求处理异常 ${req.method} ${req.url}: ${e.stack || e.message}`, 'panel');
-    try { sendJson(res, 500, { ok: false, error: e.message }); } catch {}
-  });
-};
+const onReq = _httpOnReq.create({
+  handler,
+  log,
+  sendJson,
+  rateLimited,
+  auditRecord,
+  actionOf,
+  isMutation: _audit.isMutation,
+  countPanelReq,
+  clientIpOf,
+});
+
 // 面板 HTTPS：挂载证书后设 PANEL_TLS_CERT / PANEL_TLS_KEY 即可（见 README §10）
 const tlsOpts = (() => {
   const c = process.env.PANEL_TLS_CERT, k = process.env.PANEL_TLS_KEY;
