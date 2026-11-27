@@ -1,0 +1,277 @@
+{
+ "version": 3,
+ "settings": {
+  "caddyListen": "127.0.0.1:8080",
+  "notFoundBody": "cf-tunnel-panel：这条路径没有匹配的代理规则。\n请打开面板 http://<本机IP>:8090 添加规则。",
+  "panelTitle": "Cloudflare 隧道面板",
+  "maintenance": {
+   "on": false,
+   "body": "",
+   "retryAfter": 300
+  },
+  "security": {
+   "ipDeny": "",
+   "rateLimit": {
+    "enabled": false,
+    "rps": 0,
+    "burst": 0
+   }
+  },
+  "notify": {
+   "url": "",
+   "format": "generic",
+   "secret": "",
+   "channels": [],
+   "events": {
+    "tunnelUp": true,
+    "tunnelDown": true,
+    "urlChange": true,
+    "caddyFail": true,
+    "sessionIp": true,
+    "errorSpike": true,
+    "loginFail": true,
+    "authScan": true
+   },
+   "cooldownSec": 300,
+   "quietHours": "",
+   "template": {
+    "title": "",
+    "text": ""
+   }
+  },
+  "cf": {
+   "token": "",
+   "accountId": "4c65c153b36e63d3415ad01572a2f8d0",
+   "zoneId": "3b4e5ba6456361ce669c0bd9164dfe86"
+  },
+  "monitoring": {
+   "promUrl": "http://127.0.0.1:9090"
+  },
+  "alerts": {
+   "mutes": [
+    {
+     "name": "NotifyFailing",
+     "until": "2026-11-17T02:50:26.493Z",
+     "note": "旧测试样本还在 30 分钟窗口里，等它滑出去"
+    }
+   ],
+   "hookToken": ""
+  },
+  "grafana": {
+   "enabled": true,
+   "url": "https://grafana.jianghugs.shop",
+   "lanUrl": "http://192.168.0.59:3000",
+   "dashboard": "cfp-main/a650163",
+   "theme": "",
+   "panels": [
+    {
+     "panelId": 1,
+     "title": "集群角色",
+     "h": 200
+    }
+   ]
+  }
+ },
+ "tunnels": [
+  {
+   "id": "a6cd34c6",
+   "name": "新隧道出口 2",
+   "enabled": true,
+   "mode": "named",
+   "token": "",
+   "origin": "http://127.0.0.1:8080",
+   "publicHostname": "demo.jianghugs.shop",
+   "protocol": "auto",
+   "loglevel": "info",
+   "metricsPort": "",
+   "extraArgs": "",
+   "tokenTunnelId": "c13d9643-8a91-433d-85ef-54f81bb8af67",
+   "hasToken": true,
+   "publicUrl": ""
+  },
+  {
+   "id": "5c795838",
+   "name": "面板专用出口（新）",
+   "enabled": true,
+   "mode": "named",
+   "token": "",
+   "origin": "http://127.0.0.1:8080",
+   "publicHostname": "panel.jianghugs.shop",
+   "protocol": "auto",
+   "loglevel": "info",
+   "metricsPort": "",
+   "extraArgs": "",
+   "tokenTunnelId": "b826c185-ab63-4cce-b20a-38aa3c3c4a32",
+   "publicUrl": ""
+  }
+ ],
+ "routes": [
+  {
+   "id": "702784e0",
+   "name": "演示服务（whoami）",
+   "enabled": true,
+   "tunnelId": "",
+   "host": "",
+   "path": "/demo",
+   "matchMethod": "",
+   "ipAllow": "",
+   "strip": true,
+   "upstream": "http://127.0.0.1:8091",
+   "backupUpstream": "",
+   "lbTryDuration": 0,
+   "lbPolicy": "round_robin",
+   "headersReq": "",
+   "headersRes": "",
+   "timeoutSec": 0,
+   "basicAuth": {
+    "user": "",
+    "hash": ""
+   },
+   "note": ""
+  },
+  {
+   "id": "085f9db5",
+   "name": "静态网站（nginx）",
+   "enabled": true,
+   "tunnelId": "",
+   "host": "",
+   "path": "/site",
+   "matchMethod": "",
+   "ipAllow": "",
+   "strip": true,
+   "upstream": "http://127.0.0.1:8088",
+   "backupUpstream": "",
+   "lbTryDuration": 0,
+   "lbPolicy": "round_robin",
+   "headersReq": "",
+   "headersRes": "",
+   "timeoutSec": 0,
+   "basicAuth": {
+    "user": "",
+    "hash": ""
+   },
+   "note": ""
+  },
+  {
+   "id": "db01",
+   "name": "Adminer 数据库面板",
+   "enabled": true,
+   "tunnelId": "",
+   "host": "",
+   "path": "/db",
+   "matchMethod": "",
+   "ipAllow": "",
+   "strip": true,
+   "upstream": "http://127.0.0.1:8082",
+   "backupUpstream": "",
+   "lbTryDuration": 0,
+   "lbPolicy": "round_robin",
+   "headersReq": "",
+   "headersRes": "",
+   "timeoutSec": 0,
+   "basicAuth": {
+    "user": "me",
+    "hash": ""
+   },
+   "note": ""
+  },
+  {
+   "id": "term01",
+   "name": "ttyd 网页终端",
+   "enabled": true,
+   "tunnelId": "",
+   "host": "",
+   "path": "/term",
+   "matchMethod": "",
+   "ipAllow": "",
+   "strip": true,
+   "upstream": "http://127.0.0.1:7682",
+   "backupUpstream": "",
+   "lbTryDuration": 0,
+   "lbPolicy": "round_robin",
+   "headersReq": "",
+   "headersRes": "",
+   "timeoutSec": 0,
+   "basicAuth": {
+    "user": "",
+    "hash": ""
+   },
+   "note": ""
+  },
+  {
+   "id": "graf1",
+   "name": "Grafana（grafana.jianghugs.shop）",
+   "enabled": true,
+   "tunnelId": "",
+   "host": "grafana.jianghugs.shop",
+   "path": "/",
+   "matchMethod": "",
+   "ipAllow": "",
+   "strip": false,
+   "upstream": "http://127.0.0.1:3000",
+   "backupUpstream": "",
+   "lbTryDuration": 0,
+   "lbPolicy": "round_robin",
+   "headersReq": "",
+   "headersRes": "",
+   "timeoutSec": 0,
+   "basicAuth": {
+    "user": "",
+    "hash": ""
+   },
+   "note": "监控面板走自己的子域名；Grafana 开了匿名只读，等同公开看图"
+  },
+  {
+   "id": "local1",
+   "name": "面板本机入口（127.0.0.1:8080）",
+   "enabled": true,
+   "tunnelId": "",
+   "host": "127.0.0.1",
+   "path": "/",
+   "matchMethod": "",
+   "ipAllow": "",
+   "strip": false,
+   "upstream": "http://127.0.0.1:8090",
+   "backupUpstream": "",
+   "lbTryDuration": 0,
+   "lbPolicy": "round_robin",
+   "headersReq": "",
+   "headersRes": "",
+   "timeoutSec": 0,
+   "basicAuth": {
+    "user": "",
+    "hash": ""
+   },
+   "note": "给同机服务（Alertmanager 等）用，走 Caddy 统一入口，始终命中在线的槽位"
+  },
+  {
+   "id": "0d5c3e11",
+   "name": "面板（panel.jianghugs.shop）",
+   "enabled": true,
+   "tunnelId": "",
+   "host": "panel.jianghugs.shop",
+   "path": "/",
+   "matchMethod": "",
+   "ipAllow": "",
+   "strip": false,
+   "upstream": "http://127.0.0.1:8090",
+   "backupUpstream": "",
+   "lbTryDuration": 0,
+   "lbPolicy": "round_robin",
+   "headersReq": "",
+   "headersRes": "",
+   "timeoutSec": 0,
+   "basicAuth": {
+    "user": "",
+    "hash": ""
+   },
+   "note": ""
+  }
+ ],
+ "shares": [],
+ "panel": {},
+ "viewer": {},
+ "operator": {},
+ "totp": {},
+ "warm": {}
+}

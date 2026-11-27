@@ -82,6 +82,46 @@ jobs:
         if: failure()
         run: tail -50 /tmp/panel.log
 
+  dom:
+    name: 前端 DOM 断言（236 条）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 安装依赖（含 jsdom）
+        run: npm install --no-audit --no-fund
+
+      - name: 准备脱敏测试数据
+        run: |
+          mkdir -p .dom-data
+          cp -a test/fixtures/dom/. .dom-data/
+
+      - name: 启动面板（无口令，仅本地）
+        env:
+          DATA_DIR: ${{ github.workspace }}/.dom-data
+          PORT: '8199'
+          CADDY_ADMIN: http://127.0.0.1:9999
+          CLOUDFLARED_BIN: /bin/false
+        run: |
+          node src/server.js > /tmp/panel.log 2>&1 &
+          for i in $(seq 1 40); do
+            curl -fsS http://127.0.0.1:8199/healthz && break || sleep 1
+          done
+          curl -fsS http://127.0.0.1:8199/healthz || (cat /tmp/panel.log; exit 1)
+
+      - name: DOM 断言
+        env:
+          PANEL_URL: http://127.0.0.1:8199
+          PANEL_PROXY_PORT: '8299'
+        run: timeout 600 node test/dom.test.cjs
+
+      - name: 失败时打印服务端日志
+        if: failure()
+        run: tail -60 /tmp/panel.log
+
   e2e:
     name: 真 Caddy 端到端
     runs-on: ubuntu-latest
