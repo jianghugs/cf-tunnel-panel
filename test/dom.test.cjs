@@ -719,7 +719,7 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     chk('观测页: 有「只看 5xx」按钮', !!b5 && b5.getAttribute('aria-pressed') === 'false', b5 ? b5.textContent.trim() : 'missing');
     if (b5) {
       b5.click();
-      await sleep(150);
+      await waitFor(() => b5.getAttribute('aria-pressed') === 'true', 3000, 50);
       chk('观测页: 点一下变成开启状态', b5.getAttribute('aria-pressed') === 'true' && /开/.test(b5.textContent), b5.textContent.trim());
     }
     wobs.close();
@@ -741,7 +741,7 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     const b52 = d5.querySelector('#btnOnly5xx');
     if (b52) {
       b52.click();
-      await sleep(120);
+      await waitFor(() => w5.localStorage.getItem('cfp-only5xx') === '1', 3000, 50);
       chk('观测页: 开关写入 localStorage', w5.localStorage.getItem('cfp-only5xx') === '1', String(w5.localStorage.getItem('cfp-only5xx')));
     } else chk('观测页: 开关写入 localStorage', false, 'button missing');
     // jsdom 每次 open() 都是新的 localStorage，跨页面「刷新」没法直接测；
@@ -750,7 +750,7 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     chk('观测页: 启动时读回开关状态', /localStorage\.getItem\('cfp-only5xx'\) === '1'/.test(ojs), '');
     if (b52) {
       b52.click();
-      await sleep(120);
+      await waitFor(() => b52.getAttribute('aria-pressed') === 'false' && w5.localStorage.getItem('cfp-only5xx') === '0', 3000, 50);
       chk('观测页: 再点一下恢复关闭并写回 0', b52.getAttribute('aria-pressed') === 'false' && w5.localStorage.getItem('cfp-only5xx') === '0', b52.textContent.trim());
     }
     w5.close();
@@ -776,11 +776,10 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
   {
     // 体检历史：没失败也要留一句话，而不是整块消失
     const { doc: dm, win: wm } = await open('/monitor', 1200);
-    let shown = false;
-    for (let i = 0; i < 40 && !shown; i++) {
-      const box = dm.querySelector('#checkFails');
-      if (box && !box.hidden) shown = true; else await sleep(150);
-    }
+    const shown = !!(await waitFor(() => {
+      const b = dm.querySelector('#checkFails');
+      return b && !b.hidden;
+    }, 6000, 150));
     const box2 = dm.querySelector('#checkFails');
     // 线上可能真的有失败项（比如刚重启的出口），所以两种形态都算通过：空态说明 或 聚合表
     chk('体检历史: 聚合区总有结论（说明或表格）', shown && /没有失败项|还没攒够|项目/.test(box2.textContent), (box2 ? box2.textContent : '').trim().slice(0, 60));
@@ -790,12 +789,11 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
   {
     // 审计按动作筛选：下拉最终会被填上动作名
     const { doc: dob, win: wob } = await open('/observe', 1000);
-    let opts = 0;
-    for (let i = 0; i < 40 && opts < 2; i++) {
+    const opts = (await waitFor(() => {
       const sel = dob.querySelector('#auditAct');
-      opts = sel ? sel.querySelectorAll('option').length : 0;
-      if (opts < 2) await sleep(150);
-    }
+      const n = sel ? sel.querySelectorAll('option').length : 0;
+      return n >= 2 ? n : 0;
+    }, 6000, 150)) || 0;
     chk('审计: 动作下拉有候选', opts >= 2, 'options=' + opts);
     wob.close();
 
@@ -812,7 +810,7 @@ function chk(name, ok, extra = '') { results.push([ok, name, extra]); }
     chk('审计: 有「只看失败」开关', !!bf && bf.getAttribute('aria-pressed') === 'false', bf ? bf.textContent.trim() : 'missing');
     if (bf) {
       bf.click();
-      await sleep(200);
+      await waitFor(() => bf.getAttribute('aria-pressed') === 'true', 3000, 50);
       chk('审计: 点一下变开启', bf.getAttribute('aria-pressed') === 'true' && /开/.test(bf.textContent), bf.textContent.trim());
     }
     woa.close();

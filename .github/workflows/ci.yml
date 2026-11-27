@@ -19,9 +19,12 @@ jobs:
       - name: 安装依赖
         run: npm install --omit=optional --no-audit --no-fund
 
+      - name: 模块 require 自检
+        run: node tools/check-requires.js
+
       - name: 语法检查（全部 JS）
         run: |
-          for f in src/server.js src/core/*.js src/web/assets/*.js test/*.mjs test/*.cjs; do
+          for f in src/server.js src/core/*.js src/http/*.js src/routes/*.js src/web/assets/*.js test/*.mjs test/*.cjs; do
             node --check "$f"
           done
 
