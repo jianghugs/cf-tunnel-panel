@@ -6,14 +6,15 @@
 # 用法：tools/prune-logs.sh [--dry]；KEEP_DAYS 可调（默认 7 天）
 set -euo pipefail
 
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DIR="$ROOT/data/caddy-logs"
+
 # caddy 容器以 root 写 caddy.log（0600），面板以 1000 读 → 每天顺手把本目录一层的 *.log 归属拉回 1000:1000，
 # 否则「观测 → Caddy 自身日志」会显示 EACCES。只处理一层 *.log，不动 .gz 归档。
 if [ "$(id -u)" = "0" ] && [ -d "$DIR" ]; then
   find "$DIR" -maxdepth 1 -type f -name '*.log' -exec chown 1000:1000 {} + -exec chmod 644 {} + 2>/dev/null || true
 fi
-
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DIR="$ROOT/data/caddy-logs"
 DAYS="${KEEP_DAYS:-7}"
 DRY=0
 [ "${1:-}" = "--dry" ] && DRY=1
