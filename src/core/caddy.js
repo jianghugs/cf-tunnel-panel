@@ -309,11 +309,21 @@ function buildCaddyConfig() {
     admin: { listen: ADMIN_LISTEN, origins: [CADDY_ADMIN, `http://localhost:${ADMIN_PORT}`] },
     logging: {
       logs: {
+        // 两类日志分开写：访问日志进 access.log（面板做「最近请求 / 状态码 / 命中哪条规则」统计），
+        // 其它（admin.api、tls、启动信息）进 caddy.log。混写时面板的 healthcheck 每 10 秒
+        // 两条 admin.api 会占掉 access.log 三分之一，按 10MB 滚动后真实访问历史跟着缩水，
+        // 统计时还要逐行 JSON.parse 再丢掉这些行。
         default: {
           level: 'INFO',
           encoder: { format: 'json' },
-          // 访问日志落文件，面板据此做「最近请求 / 状态码 / 命中了哪条规则」统计
+          writer: { output: 'file', filename: otherLogPathForCaddy(), roll_size_mb: 5, roll_keep: 2 },
+          exclude: ['http.log.access'],
+        },
+        access: {
+          level: 'INFO',
+          encoder: { format: 'json' },
           writer: { output: 'file', filename: accessLogPathForCaddy(), roll_size_mb: 10, roll_keep: 3 },
+          include: ['http.log.access'],
         },
       },
     },
@@ -323,7 +333,7 @@ function buildCaddyConfig() {
           main: {
             listen: [state.settings.caddyListen || ':8080'],
             automatic_https: { disable: true },
-            logs: {}, // 打开 access log（写进上面的 default logger）
+            logs: {}, // 打开 access log（写进上面 include http.log.access 的 access logger）
             // 流量经 Cloudflare 隧道进来时，TCP 对端是 cloudflared/边缘节点，
             // 真实访客 IP 在 CF-Connecting-IP 里。不配这两项，IP 白名单/黑名单
             // 会把所有人当成同一个 IP（127.0.0.1 或某个边缘地址）。
@@ -357,6 +367,6 @@ function cloudflareRanges() {
   return custom.split(',').map((x) => x.trim()).filter(Boolean);
 }
 
-const { CADDY_ADMIN, accessLogPathForCaddy } = require('./paths');
+const { CADDY_ADMIN, accessLogPathForCaddy, otherLogPathForCaddy } = require('./paths');
 
 module.exports = { buildCaddyConfig, buildMatch, buildRouteHandlers, caddy, cloudflareRanges, lastSkipped, maintPage, tunnelHostOf, PANEL_SLOT_RE, panelSlots, startPeerWatch, peerLive };
