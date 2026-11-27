@@ -2,6 +2,31 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.58
+
+## 质量收尾：测试防线、去重复、静态检查
+
+这一版不发新功能，全是「让它自己发现自己的错」的基础设施。
+
+### 测试防线
+- **接口冒烟** `test/smoke.mjs`：在空 DATA_DIR、无口令的全新实例上把 7 个页面 + 每条 `/api/*` 路由各打一遍，写操作也打（黑名单、设置、规则、分享、体检、推送），专抓「模块搬出去但 require 漏了」这类 `node --check` 查不出、只在运行期炸的问题。
+- **api 套件可跑在无边缘环境**：`PANEL_NO_AUTH=1` 打无口令实例；开跑前探 `CADDY_EDGE`，连不上就把 13 条「经真 Caddy 取证」的用例标 SKIP 并汇总，退出码仍为 0。
+- **发版自动验两条路**：`tools/release.sh` 默认 `PANEL_HOST=panel.jianghugs.shop`，滚动升级后既验「经 Caddy 的 8080（Host 头）」也验公网 `/healthz`，任一不通直接失败。
+- CI 增加 i18n / openapi / 接口冒烟 / ESLint 四个门槛。
+
+### 去重复
+- 十个 `src/routes/*.js` 各 98–112 行的 require/解构样板（含 `authOf()`、`readOpenapi()`）收进 `src/routes/_deps.js`，模块只解构自己用到的名字，净减 727 行。
+- 新增 `tools/node.sh`：本机有 node 就用本机的，没有就丢进容器跑，并白名单透传 `PANEL_URL/PANEL_USER/PANEL_PASS/CADDY_EDGE` 等变量；`release.sh` 自动接上，发版不再依赖手工 shim。
+
+### 静态检查与运维
+- 接入 ESLint（只开 `no-undef` + `no-unused-vars`），`npm test` 链变成 requires → i18n → openapi → lint → api → dom。首跑即抓出一处真问题：路由模块里一段 `/metrics` 分支引用了 `server.js` 的私有函数，位置在调度链之后永不执行，属搬迁残留，已删。
+- 新增 `tools/prune-logs.sh` + crontab（每天 04:17）清理 `data/caddy-logs` 里 7 天前的 `.gz`。Caddy 自身只有按大小滚动，按天保留做不到（0.29.46 试过 `roll_keep_for`，不被 2.11.9 识别并把整站打成 502）。
+- i18n 覆盖漂移 53 条（同一句中文在 v0.14 / v0.29 两批翻译里的措辞差异）定为不改：运行时按 `Object.assign` 顺序取最后一段，界面只会显示一种译法、不会中英混排。
+
+### 校验
+- require 自检 54 文件 0 问题；i18n 重复键 0 / 空译文 0 / 未收录 0；openapi 89 路径 95 操作全覆盖；ESLint `--quiet` 0 problem。
+- 接口冒烟 91/91；api 套件对生产 367/367；无边缘环境 354/354 + 跳过 13 条。
+
 ## v0.29.57
 
 ### 重构
