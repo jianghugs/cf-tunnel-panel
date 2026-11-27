@@ -2,6 +2,22 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.60
+
+## v0.29.60
+
+Caddy 的访问日志没法按天切文件（2.11.9 不认 roll_keep_for，v0.29.46 试过直接把整站打挂），
+所以这一次不切文件，改成「按天看得见」：
+
+- `/metrics` 新增 `cf_caddy_log_bytes`（日志目录总占用，含轮转归档）与 `cf_caddy_log_files`（文件数），
+  30 秒缓存，扫一次目录；Prometheus 本来就在抓 8080 的本机指标，不用额外配置。
+- `tools/prune-logs.sh` 每天 04:17 那趟除了删 7 天前的 `.gz`，再打一行汇总：
+  字节数 / 文件数 / 最老归档日期，落在 `data/logs/prune.log`，看趋势用 `tail`。
+
+实测：测试实例上 `/metrics` 报 1501853 字节 / 4 个文件，与 `du -sb data/caddy-logs` 完全一致。
+
+静态检查（requires / i18n / openapi / alerts / eslint）全绿；对生产面板 API 367/367。
+
 ## v0.29.59
 
 ## 这一版修的是「审计出来的 7 个洞」
