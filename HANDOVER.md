@@ -274,7 +274,10 @@ bash tools/release.sh <版本号> --notes-file /tmp/notes.md --build --force
      发版后必须跑一遍 `test/api.test.mjs` 才能发现。可以考虑在 CI 里加一条「模块 require 自检」；
   2. 隧道 CRUD 那一簇仍留在 `src/server.js`：`/api/tunnels/<id>` 的正则块夹在 `start-all` 与
      `/api/operator` 之间，把 `start-all` 挪进调度链会被这条正则先吃掉（`id='start-all'`）。要拆得先调整匹配顺序；
-  3. Caddy access log 想做**按天**回收目前做不到（file writer 只有按大小），要么换 Loki/promtail，要么接受按大小；
+  3. Caddy access log 本身只有**按大小**滚动（file writer 无按天能力），旧归档靠 `tools/prune-logs.sh` + cron 每天删 7 天前的 `.gz`；
   4. `dom.test.cjs` 里还有几处依赖固定 `sleep` 的用例，可以统一换成 `waitFor`；
   5. 面板自己的能力接口已有 OpenAPI（`docs/openapi.json`，线上 `GET /api/openapi`），改接口记得
      `node tools/openapi.js --gen`，否则 `npm run test:openapi` 会挡下来。
+
+- **Caddy 旧归档由 cron 清理**：`tools/prune-logs.sh`（默认删 7 天前的 `data/caddy-logs/*.gz`，`KEEP_DAYS` 可调、`--dry` 可预览），crontab 每天 04:17 跑，日志写 `data/logs/prune.log`。Caddy 自身只有按大小滚动（`roll_size_mb` / `roll_keep`），按天保留做不到（`roll_keep_for` 不被 2.11.9 识别，v0.29.46 试过并因此把整站打成 502）。
+- **i18n 覆盖漂移 53 条：定为不改**。都是同一句中文在 v0.14 与 v0.29 两批翻译里的措辞差异（如 `Caddy 分流` = routing / dispatch），运行时按 `Object.assign` 顺序取最后一段，所以英文界面只会看到一种译法、不会混中文；`tools/i18n-check.js` 只把它当 warn。真要统一得逐条改译文，收益低。
