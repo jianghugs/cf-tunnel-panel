@@ -92,6 +92,8 @@ const { seenCaddyOk, shareJanitor, shareUrl, startMonitor } = _monitor;
 const _httpStatic = require('../http/static');
 const _httpBoot = require('../http/boot');
 const _httpOnReq = require('../http/onreq');
+const fs = require('fs');
+const path = require('path');
 
 async function handle(p, req, res, url) {
   if (p === '/api/shares' && req.method === 'GET') {

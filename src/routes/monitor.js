@@ -93,6 +93,7 @@ const { seenCaddyOk, shareJanitor, shareUrl, startMonitor } = _monitor;
 const _httpStatic = require('../http/static');
 const _httpBoot = require('../http/boot');
 const _httpOnReq = require('../http/onreq');
+const crypto = require('crypto');
 
 // 搬运前 auth 是 server.js handler 内的局部变量（checkAuth(req) 的结果）。
 // 每个请求只算一次，结果挂在 req 上缓存，避免重复校验与重复计数。
