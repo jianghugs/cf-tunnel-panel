@@ -66,7 +66,22 @@ docker compose --profile bootstrap up -d panel   # 首次/重建 panel 才需要
 
 ```
 src/
-  server.js            HTTP 入口与所有 /api 路由（单文件，约 2.4k 行）
+  server.js            HTTP 入口 + 鉴权门 + /api/* 模块调度（约 780 行）
+  http/
+    onreq.js           请求入口：探针判定、限流、审计（x-cfp-test 不记审计）
+    static.js          静态资源分发（带 ?v= 指纹走一年 immutable 缓存）
+    boot.js            /boot.js：首帧主题 + 客户端语言字典
+  routes/              按子系统拆分的 /api 路由；每个模块导出 handle(p, req, res, url)，
+                       未命中返回 false，server.js 里对 /api/* 依次调用并短路
+    authroutes.js      会话、运维账号、TOTP、面板登录、二维码
+    rules.js           代理规则增删改、rules/test、match、caddy/{config,push}
+    shares.js          一次性分享链接
+    cf.js              Cloudflare：隧道、DNS、缓存、预览
+    backups.js         备份与回滚
+    monitor.js         一键体检、监控状态、告警静默
+    observe.js         traffic / history / audit / logs / 各类统计
+    settings.js        设置、导出导入、配置即代码
+    ops.js             CSV 导出、IP 黑名单、bench
   core/
     web.js             页面外壳 + 静态资源（ETag/gzip/长缓存）+ 登录页模板
     i18n.js            中文原文 → 英文 字典（分版本多段 Object.assign 合并）
@@ -253,7 +268,12 @@ bash tools/release.sh <版本号> --notes-file /tmp/notes.md --build --force
 
 - 当前状态：绿/蓝双槽正常，`/api/selfcheck` 14/14，公网入口与两条隧道均正常。具体版本号看 `/healthz`。
 - 值得继续做的事（按价值排序）：
-  1. `src/server.js` 仍在 2.4k 行量级，`/api` 路由可以按域拆成 `routes/*.js`；
-  2. Caddy access log 想做**按天**回收目前做不到（file writer 只有按大小），要么换 Loki/promtail，要么接受按大小；
-  3. `dom.test.cjs` 里还有几处依赖固定 `sleep` 的用例，可以统一换成 `waitFor`；
-  4. 面板自己的能力接口（`/api/*`）还没有 OpenAPI 描述，接入脚本化运维时会缺文档。
+  1. `src/routes/*.js` 的模块头是从 `cf.js` 复制的 require 段，新增模块一定要逐文件自查 ——
+     漏 `net` / `dns` / `http` / `crypto` / `fs` / `path` 只会**运行期**报错（`node --check` 查不出来），
+     发版后必须跑一遍 `test/api.test.mjs` 才能发现。可以考虑在 CI 里加一条「模块 require 自检」；
+  2. 隧道 CRUD 那一簇仍留在 `src/server.js`：`/api/tunnels/<id>` 的正则块夹在 `start-all` 与
+     `/api/operator` 之间，把 `start-all` 挪进调度链会被这条正则先吃掉（`id='start-all'`）。要拆得先调整匹配顺序；
+  3. Caddy access log 想做**按天**回收目前做不到（file writer 只有按大小），要么换 Loki/promtail，要么接受按大小；
+  4. `dom.test.cjs` 里还有几处依赖固定 `sleep` 的用例，可以统一换成 `waitFor`；
+  5. 面板自己的能力接口已有 OpenAPI（`docs/openapi.json`，线上 `GET /api/openapi`），改接口记得
+     `node tools/openapi.js --gen`，否则 `npm run test:openapi` 会挡下来。

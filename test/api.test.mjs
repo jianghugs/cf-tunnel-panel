@@ -492,7 +492,9 @@ ok('/api/traffic 桶字段齐全', (tr.d.buckets || []).every((b) => 'total' in 
   const nowHour = new Date().setMinutes(0, 0, 0);
   const last = (tr.d.buckets || [])[tr.d.buckets.length - 1] || {};
   const first = (tr.d.buckets || [])[0] || {};
-  ok('/api/traffic 最后一个桶是当前小时', last.t === nowHour, `${last.t} vs ${nowHour}`);
+  // 整点边界会抖：请求发在 10:59:59.9、响应回来已经 11:00，服务端算的是上一小时。
+  // 所以容忍 1 小时的偏差（真实回归会差好几小时，仍然抓得住）。
+  ok('/api/traffic 最后一个桶是当前小时', Math.abs(last.t - nowHour) <= 3600 * 1000, `${last.t} vs ${nowHour}`);
   ok('/api/traffic 桶按整点对齐且连续', (tr.d.buckets || []).every((b, i) => b.t === first.t + i * 3600 * 1000), '');
 }
 const hist = await j('/api/history');
