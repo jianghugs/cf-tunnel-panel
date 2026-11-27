@@ -2,6 +2,23 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.54
+
+### 修 0.29.52/0.29.53 引入的一个真故障：保存代理规则返回 400
+
+**症状**：面板里改完规则点「保存规则」提示失败；`POST /api/routes` 返回 `{"ok":false,"error":"auth is not defined"}`（HTTP 400）。
+
+**原因**：把路由从 `server.js` 拆到 `src/routes/*.js` 时，原 handler 作用域里的局部变量 `auth` 没有跟着走。大部分地方已经改用模块内的 `authOf(req)`，但漏了两处：
+
+- `src/routes/rules.js`：规则启用/停用时写审计的 `actor: auth.who`
+- `src/routes/observe.js`：重发通知时写审计的 `actor: auth.who`
+
+两处都在 `try` 里，异常被统一转成 400/502，所以页面只看到「保存失败」，实际是变量未定义。
+
+**修法**：两处都改成 `authOf(req).who`；顺带全仓 `grep` 确认 `src/routes/` 下已无裸 `auth.` 引用。
+
+**验证**：预览实例 `POST /api/routes` 200（禁用一个规则再还原均成功）；发布后对生产复跑 api 套件确认 367/367。
+
 ## v0.29.53
 
 ### 修 0.29.52 的一个回归：审计日期列表 500
