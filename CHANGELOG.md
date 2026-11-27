@@ -2,6 +2,28 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.63
+
+## 修掉一个「上线了但按下去会报错」的真问题
+
+v0.29.61 加的「设置 → 版本与回滚」有个隐患：回滚请求要写 `data/ops/rollback.json`，而那个目录是宿主机 root 建的（755 root:root），面板容器跑在 1000:1000 上，写不进去 —— 点回滚会返回 500（EACCES），功能等于摆设。这轮把它修掉并端到端验过。
+
+### 改动
+- `tools/ops-agent.sh`：每次运行先把 `data/ops` 的属主改回 `1000:1000`、权限 775（agent 本身是 root，能改），避免以后又被谁以 root 建目录卡住。
+- `src/routes/versions.js`：写请求失败时不再吐裸 500，改成明确提示「写不进 data/ops（EACCES）：宿主机执行 chown 1000:1000 data/ops」，看页面就知道怎么修。
+- 宿主机侧已 `chown 1000:1000 data/ops && chmod 775`。
+
+### 端到端验证（不碰生产镜像）
+按面板用户的身份往 `data/ops/` 排一个故意不存在的版本 `0.0.0` → 一分钟内 ops-agent 取走、`docker image inspect` 判定不存在、写入 `ok:false` 结果并删掉请求：
+- 请求文件消失、`rollback-result.json` 出现 `{"version":"0.0.0","ok":false,"exitCode":127,"tail":["宿主机上没有 cf-tunnel-panel:0.0.0 这个镜像，请求已丢弃"]}`
+- 面板 `GET /api/versions/rollback` 正确读到 `lastRun`（页面会显示这次失败与原因）
+- agent 日志 `本机没有 cf-tunnel-panel:0.0.0，丢弃`
+
+真回滚（切色 15–30 秒不可用）没有在这次做，需要时再单独演练。
+
+### 校验
+`tools/check.sh` 五项全绿（requires / i18n / openapi 92 路径 99 操作 / alerts / eslint）；`bash -n tools/ops-agent.sh`、`node --check src/routes/versions.js` 通过。
+
 ## v0.29.62
 
 ## v0.29.62
