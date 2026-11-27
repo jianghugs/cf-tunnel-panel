@@ -831,3 +831,104 @@ document.addEventListener('DOMContentLoaded', () => {
   const box = $('#cardSearch');
   if (box) box.addEventListener('input', applyCardSearch);
 });
+
+/* ---- 版本与回滚（v0.29.61）---- */
+function verTime(ts) { try { return new Date(Number(ts) || 0).toLocaleString(); } catch { return '—'; } }
+function verSize(n) { return n ? Math.round(Number(n) / 1048576) + ' MB' : '—'; }
+
+function renderVersionRun(d) {
+  const box = $('#verRun');
+  if (!box) return;
+  const p = d && d.pending;
+  const r = d && d.lastRun;
+  box.innerHTML = '';
+  const add = (html) => { const row = document.createElement('div'); row.innerHTML = html; box.appendChild(row); };
+  if (p && p.version) {
+    add('<span class="tag warn">排队中</span> 目标 <b>' + p.version + '</b>（' + verTime(p.at)
+      + '，由 ' + (p.by || '—') + ' 发起）—— 宿主机每分钟处理一次，最多等 1 分钟。');
+  }
+  if (r && r.version) {
+    add('<span class="tag ' + (r.ok ? 'ok' : 'err') + '">上次回滚 ' + (r.ok ? '成功' : '失败') + '</span> 目标 <b>'
+      + r.version + '</b> · 退出码 ' + r.exitCode + ' · 用时 ' + (r.seconds || '—') + 's · ' + verTime(r.finishedAt));
+    if (Array.isArray(r.tail) && r.tail.length) {
+      const pre = document.createElement('pre');
+      pre.className = 'log collapsed';
+      pre.style.marginTop = '8px';
+      pre.textContent = r.tail.join('\n');
+      box.appendChild(pre);
+    }
+  }
+  if (!box.textContent.trim()) box.textContent = '还没有回滚记录。';
+}
+
+async function loadVersions() {
+  const list = $('#verList');
+  if (!list) return;
+  let d;
+  try { d = await api('/api/versions'); }
+  catch (e) { list.innerHTML = '<div class="hint err">读不到版本信息：' + (e.message || e) + '</div>'; return; }
+  const cur = d.current || '';
+  if ($('#verCur')) $('#verCur').textContent = '当前 ' + (cur || '—');
+  const imgs = d.images || [];
+  if ($('#verAvail')) {
+    $('#verAvail').textContent = d.available === false ? ('读不到 Docker：' + (d.error || '')) : (imgs.length + ' 个版本');
+  }
+  if (!imgs.length) {
+    list.innerHTML = '<div class="empty">没有找到 cf-tunnel-panel 的版本镜像</div>';
+  } else {
+    const rows = imgs.map((x) => {
+      const isCur = x.tag === cur ? ' <span class="tag ok">当前</span>' : '';
+      return '<tr><td class="mono">' + x.tag + isCur + '</td><td>' + verTime(x.created) + '</td><td>' + verSize(x.size)
+        + '</td><td class="mono muted">' + (x.id || '') + '</td><td><button class="sm ghost" data-pick="' + x.tag + '">选它</button></td></tr>';
+    }).join('');
+    list.innerHTML = '<table class="tbl"><thead><tr><th>版本</th><th>构建时间</th><th>大小</th><th>镜像</th><th></th></tr></thead><tbody>'
+      + rows + '</tbody></table>';
+    list.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
+      const inp = $('#verInput');
+      if (inp) { inp.value = b.dataset.pick; inp.focus(); }
+      const msg = $('#verMsg');
+      if (msg) { msg.textContent = '再点一次「回滚到这个版本」确认'; msg.className = 'muted'; }
+    }));
+  }
+  renderVersionRun(d);
+  if (d.pending && d.pending.version) setTimeout(loadVersions, 5000);
+}
+
+async function doRollback() {
+  const inp = $('#verInput');
+  const msg = $('#verMsg');
+  const v = ((inp && inp.value) || '').trim();
+  if (!/^\d+\.\d+\.\d+$/.test(v)) {
+    if (msg) { msg.textContent = '版本号要写成 0.29.58 这种三段式'; msg.className = 'muted err'; }
+    return;
+  }
+  const cur = (($('#verCur') && $('#verCur').textContent) || '').replace('当前 ', '').trim();
+  if (v === cur) {
+    if (msg) { msg.textContent = '当前已经是 ' + v + ' 了'; msg.className = 'muted err'; }
+    return;
+  }
+  if (!window.confirm('确认把面板回滚到 ' + v + '？\n\n容器会重建，15–30 秒内不可用；当前版本 ' + cur + ' 的镜像还留着，随时可以改回去。')) return;
+  const btn = $('#btnRollback');
+  if (btn) btn.disabled = true;
+  try {
+    const r = await api('/api/versions/rollback', { method: 'POST', body: { version: v, confirm: v } });
+    if (msg) { msg.textContent = '已排队，宿主机每分钟处理一次…'; msg.className = 'muted'; }
+    toast('回滚请求已排队：' + (r.version || v), 'ok');
+    if (inp) inp.value = '';
+    await loadVersions();
+  } catch (e) {
+    if (msg) { msg.textContent = e.message || String(e); msg.className = 'muted err'; }
+    toast(e.message || '回滚请求失败', 'err');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!$('#sec-version')) return;
+  const rf = $('#btnVerRefresh');
+  if (rf) rf.addEventListener('click', loadVersions);
+  const rb = $('#btnRollback');
+  if (rb) rb.addEventListener('click', doRollback);
+  loadVersions();
+});

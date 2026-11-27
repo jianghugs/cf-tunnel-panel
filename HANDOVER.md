@@ -281,3 +281,14 @@ bash tools/release.sh <版本号> --notes-file /tmp/notes.md --build --force
 
 - **Caddy 旧归档由 cron 清理**：`tools/prune-logs.sh`（默认删 7 天前的 `data/caddy-logs/*.gz`，`KEEP_DAYS` 可调、`--dry` 可预览），crontab 每天 04:17 跑，日志写 `data/logs/prune.log`。Caddy 自身只有按大小滚动（`roll_size_mb` / `roll_keep`），按天保留做不到（`roll_keep_for` 不被 2.11.9 识别，v0.29.46 试过并因此把整站打成 502）。
 - **i18n 覆盖漂移 53 条：定为不改**。都是同一句中文在 v0.14 与 v0.29 两批翻译里的措辞差异（如 `Caddy 分流` = routing / dispatch），运行时按 `Object.assign` 顺序取最后一段，所以英文界面只会看到一种译法、不会混中文；`tools/i18n-check.js` 只把它当 warn。真要统一得逐条改译文，收益低。
+
+## 13. 版本与回滚（面板内，v0.29.61 起）
+
+设置页「版本」分区可以看到本机所有 `cf-tunnel-panel:<版本>` 镜像、构建时间与当前在跑的是哪个，输入目标版本号并二次确认即可排队回滚。
+
+链路是两段的，因为面板容器里没有 docker CLI、也不该拿特权：
+
+1. 面板（容器内）用 `/var/run/docker.sock` 的只读 HTTP API 读镜像列表，回滚请求写成 `data/ops/rollback.json`（`{version,from,at,by}`）；
+2. 宿主机 cron 每分钟跑 `tools/ops-agent.sh`，读到排队文件就 `bash tools/rollback.sh <版本>`（重标 `:local` → 滚动升级 → 校验内网与公网），把结果写 `data/ops/rollback-result.json`，页面 5 秒轮询显示。
+
+⚠️ 两个注意：`data/ops/rollback.json` 一旦出现，**1 分钟内就会真的回滚**，手工排查时别把它当普通文件放着；回滚会重建容器，页面会 502 十几秒，属正常。日志在 `data/logs/rollback-<版本>-<时间>.log` 与 `data/logs/ops-agent.log`。

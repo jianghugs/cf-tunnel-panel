@@ -1170,4 +1170,15 @@ const EN_V0300 = {
 };
 Object.assign(EN, EN_V0300);
 
+const EN_V0310 = {
+  '版本': 'Version',
+  '版本与回滚': 'Version & rollback',
+  '当前': 'Current',
+  '刷新': 'Refresh',
+  '本机镜像：': 'Local images: ',
+  '回滚会重建容器，页面会短暂 502（约 15–30 秒），期间不要关闭浏览器。': 'Rolling back recreates the container; the page will 502 briefly (15–30s). Keep this tab open.',
+  '回滚到这个版本': 'Roll back to this version',
+};
+Object.assign(EN, EN_V0310);
+
 module.exports = { COOKIE, LANGS, EN, langOf, t, clientDict };

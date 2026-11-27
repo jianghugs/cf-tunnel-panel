@@ -115,6 +115,7 @@ const _routesRules = require('./routes/rules');
 const _routesObserve = require('./routes/observe');
 const _routesMonitor = require('./routes/monitor');
 const _routesTunnels = require('./routes/tunnels');
+const _routesVersions = require('./routes/versions');
 
 async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -504,6 +505,8 @@ async function handler(req, res) {
     await _routesMonitor.handle(p, req, res, url);
     if (res.writableEnded || res.headersSent) return;
     await _routesTunnels.handle(p, req, res, url);
+    if (res.writableEnded || res.headersSent) return;
+    await _routesVersions.handle(p, req, res, url);
     if (res.writableEnded || res.headersSent) return;
   }
   if (p === '/api/openapi' && req.method === 'GET') {
