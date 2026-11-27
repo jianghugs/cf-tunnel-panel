@@ -85,12 +85,6 @@ async function handle(p, req, res, url) {
     return res.end(text);
   }
 
-  // ---- Prometheus metrics
-  if (p === '/metrics' && req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4; charset=utf-8', 'Cache-Control': 'no-store' });
-    return res.end(metricsText() + exitMetricsLines());
-  }
-
   // ---- Cloudflare API
   // ---- 命名隧道的「公共主机名」管理（Cloudflare 隧道配置 API，v0.12 新增）----
   // 以前这一步只能去 Cloudflare 后台点，面板只能提醒"只建 CNAME 会 1033"。

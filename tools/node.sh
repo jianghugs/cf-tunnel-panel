@@ -24,7 +24,15 @@ case "$WORK" in
   *) WORK="$ROOT" ;;
 esac
 
+# 测试常用环境变量要显式 -e 才进容器（docker 不会自动继承宿主机 export）
+PASSENV=()
+for _v in CFP_NODE_IMAGE PANEL_URL PANEL_USER PANEL_PASS PANEL_NO_AUTH \
+          PANEL_PROXY_PORT CADDY_EDGE CADDY_PORT E2E_STANDBY_PORT NODE_PATH TZ; do
+  if [ -n "${!_v:-}" ]; then PASSENV+=(-e "$_v=${!_v}"); fi
+done
+
 exec docker run --rm -i --network host \
   -e CFP_NODE_IN_CONTAINER=1 \
+  "${PASSENV[@]}" \
   -v "$ROOT":"$ROOT" -w "$WORK" \
   "${CFP_NODE_IMAGE:-node:22-alpine}" node "$@"
