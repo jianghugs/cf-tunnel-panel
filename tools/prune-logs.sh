@@ -23,4 +23,9 @@ fi
 
 n=$(find "$DIR" -type f -name '*.gz' -mtime +"$DAYS" -print -delete | wc -l | tr -d ' ')
 before=$(du -sh "$DIR" 2>/dev/null | cut -f1)
-echo "$(date '+%F %T') 清理 caddy 旧归档 ${n} 个（>${DAYS} 天），目录现在 ${before}"
+# 每天留一行汇总，写进 cron 的 data/logs/prune.log —— Caddy 自己只能按大小滚动，
+# 想知道「日志一天涨多少」只能靠这行 + /metrics 里的 cf_caddy_log_bytes。
+bytes=$(du -sb "$DIR" 2>/dev/null | cut -f1); bytes=${bytes:-0}
+files=$(find "$DIR" -type f | wc -l | tr -d ' ')
+oldest=$(find "$DIR" -type f -printf '%TY-%Tm-%Td %p\n' 2>/dev/null | sort | head -1 | cut -d' ' -f1)
+echo "$(date '+%F %T') 清理 caddy 旧归档 ${n} 个（>${DAYS} 天）；目录 ${before} / ${bytes} 字节 / ${files} 个文件 / 最老 ${oldest:-无}"

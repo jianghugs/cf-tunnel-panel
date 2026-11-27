@@ -223,6 +223,15 @@ async function handler(req, res) {
       extra += '# HELP cf_process_rss_bytes 进程常驻内存\n';
       extra += '# TYPE cf_process_rss_bytes gauge\n';
       extra += 'cf_process_rss_bytes ' + m.rss + '\n';
+      try {
+        const _cl = require('./core/insight').caddyLogStats();
+        extra += '# HELP cf_caddy_log_bytes Caddy 访问日志目录占用（含轮转归档）\n';
+        extra += '# TYPE cf_caddy_log_bytes gauge\n';
+        extra += 'cf_caddy_log_bytes ' + _cl.bytes + '\n';
+        extra += '# HELP cf_caddy_log_files Caddy 访问日志目录文件数\n';
+        extra += '# TYPE cf_caddy_log_files gauge\n';
+        extra += 'cf_caddy_log_files ' + _cl.files + '\n';
+      } catch (e) {}
       if (m.loop) {
         extra += '# HELP cf_eventloop_p99_ms 事件循环延迟 p99（毫秒）\n';
         extra += '# TYPE cf_eventloop_p99_ms gauge\n';

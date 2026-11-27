@@ -437,6 +437,26 @@ function panelReqSnapshot() {
   return { total: panelReq.total, since: panelReq.since, byStatus: { ...panelReq.byStatus }, top };
 }
 
+// Caddy 访问日志目录占用：抓取时扫目录，30 秒缓存（目录里就几个文件，代价可忽略）。
+// 用途是「按天看得见增长」，替代做不到的「按天切文件」（Caddy 2.11.9 不认 roll_keep_for）。
+let _caddyLogMemo = { at: 0, bytes: 0, files: 0 };
+function caddyLogStats() {
+  if (Date.now() - _caddyLogMemo.at < 30000) return _caddyLogMemo;
+  let bytes = 0;
+  let files = 0;
+  try {
+    const dir = path.join(DATA_DIR, 'caddy-logs');
+    for (const f of fs.readdirSync(dir)) {
+      try {
+        const st = fs.statSync(path.join(dir, f));
+        if (st.isFile()) { bytes += st.size; files += 1; }
+      } catch (e) {}
+    }
+  } catch (e) {}
+  _caddyLogMemo = { at: Date.now(), bytes, files };
+  return _caddyLogMemo;
+}
+
 function metricsText() {
   const lines = [];
   const run = state.tunnels.filter((t) => tunnelRt(t.id).status === 'running').length;
@@ -630,4 +650,4 @@ function securityAttempts(hours = 24, limit = 3000) {
   return out;
 }
 
-module.exports = { countPanelReq, panelReqSnapshot, upstreamHealth, HISTORY_MAX, badgeSvg, diffRoutes, healthOf, histTick, metricsText, readAccess, readLogText, refreshUpstreamHealth, requestsLastMinute, rtHistory, sampleHistory, shadowReport, simulateMatch, systemInfo, tcpProbeOnce, trafficByHour, trafficByPath, securityAttempts, upstreamTarget };
+module.exports = { caddyLogStats, countPanelReq, panelReqSnapshot, upstreamHealth, HISTORY_MAX, badgeSvg, diffRoutes, healthOf, histTick, metricsText, readAccess, readLogText, refreshUpstreamHealth, requestsLastMinute, rtHistory, sampleHistory, shadowReport, simulateMatch, systemInfo, tcpProbeOnce, trafficByHour, trafficByPath, securityAttempts, upstreamTarget };
