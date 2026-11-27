@@ -15,7 +15,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "npm run test:requires && npm run test:i18n && npm run test:openapi && npm run test:alerts && npm run test:lint && npm run test:api && npm run test:dom",
+    "test": "npm run check && npm run test:api && npm run test:dom",
     "test:requires": "node tools/check-requires.js",
     "test:i18n": "node tools/i18n-check.js",
     "test:api": "node test/api.test.mjs",
@@ -24,7 +24,10 @@
     "test:alerts": "node tools/check-alerts.js",
     "test:smoke": "node test/smoke.mjs",
     "lint": "eslint .",
-    "test:lint": "eslint . --quiet"
+    "test:lint": "eslint . --quiet",
+    "check": "npm run test:requires && npm run test:i18n && npm run test:openapi && npm run test:alerts && npm run test:lint",
+    "e2e:local": "bash tools/local-e2e.sh",
+    "verify": "npm run check && npm run test:smoke && npm run e2e:local"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

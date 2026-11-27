@@ -125,6 +125,25 @@ docker run --rm --network host -v "$PWD":/w -v "$PWD/data":/data -v /tmp/jsd:/j 
   node:22-alpine node test/e2e-caddy.mjs
 ```
 
+### 本地"真 Caddy"端到端（不碰生产）
+
+`test/api.test.mjs` 里有 13 条要「经真 Caddy 取证」的用例（分享链接、维护模式 503、IP 黑名单 403、护栏、WS 升级）。没有边缘时它们被 SKIP；想真跑：
+
+```bash
+./tools/caddy-test.sh start            # 一次性 Caddy：admin 127.0.0.1:20299，边缘 :8089
+PANEL_PASS=... ./tools/local-e2e.sh    # 一次性面板(:8182，data 是副本) → 推配置 → 跑 api 套件
+./tools/caddy-test.sh stop             # 收尾
+```
+
+`local-e2e.sh` 会把副本里的 `caddyListen` 改成 `:8089`、上游 `127.0.0.1:8090/8095` 改指 `8182`、清空黑名单与维护模式 —— 只碰临时容器，生产 Caddy 与生产面板都不受影响。加 `--e2e` 顺带跑 `test/e2e-caddy.mjs`（`CADDY_PORT=8089`）。
+
+### 静态检查 / 全量验证
+
+```bash
+./tools/check.sh     # = npm run check：requires → i18n → openapi → alerts → lint（宿主机没 npm 也能跑）
+npm run verify       # 再加 smoke + local-e2e（有 npm 的机器或 CI）
+```
+
 已知假失败模式：改完代码刚重启时，固定 `sleep` 等待会抖 → 用 `waitFor(fn, 8000)`（`test/dom.test.cjs` 里已有）。
 `jsdom` 的 `localStorage` 每次 `open()` 都是新的，别指望跨「刷新」保留状态。
 
