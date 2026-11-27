@@ -2,6 +2,48 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.51
+
+## 接口清单：OpenAPI 描述 + 覆盖自检
+
+这一版没有改任何接口行为，只把「现在到底有哪些接口」变成可查、可校验的资产。
+
+### 新增
+
+- **`GET /api/openapi`**：返回本面板的 OpenAPI 3 描述（需登录，和其他 `/api/*` 一样）。用 Swagger UI、Postman、Insomnia 或任何 OpenAPI 工具贴这个地址就能直接浏览、试调。
+- **`docs/openapi.json`**：89 条路径 / 95 个操作，按 13 个业务分组（系统与鉴权、代理规则、隧道出口、设置、安全、监控体检、一次性分享、Cloudflare、工具箱、日志审计、备份恢复、观测数据、其他）。
+- **`tools/openapi.js`**：
+  - `node tools/openapi.js --gen` 重新生成文档；
+  - `node tools/openapi.js --check` 比对「代码里扫到的 `/api` 路由 ⊆ 文档」，缺一个就非零退出。
+
+### 接线
+
+- `npm test` 现在是四段：`test:i18n` → `test:openapi` → `test:api` → `test:dom`。
+  以后新增接口忘了写文档，`npm test` / CI 会直接红，不用靠人记。
+- `Dockerfile` 补了 `COPY docs ./docs`（原来只打包 `src` 和 `tools`，`/api/openapi` 在镜像里会读不到文件）。
+
+### 生成器怎么认路由
+
+`src/server.js` 里是手写路由（`if (p === '/api/x' && req.method === 'GET')` 加一批正则），所以生成器直接扫源码：
+
+- 字面量：`p === '/api/...'`，一行里 `||` 串联的多个也能拆开；
+- 正则：逐字符取边界，再把 `[0-9a-fA-F-]{36}`、`([\w-]+)`、`(?:/(start|stop))?` 这类片段归一成 `{id}` / `{id2}`；
+- 方法取同一行的 `req.method`，没有就按 GET（本项目里的单行路由都是 GET）。
+
+### 验证
+
+| 项 | 结果 |
+| --- | --- |
+| `node test/openapi.test.cjs` | 6 项全 PASS（89 路径 / 95 操作，覆盖检查通过） |
+| `GET /api/openapi`（带凭据） | 200，41 KB |
+| `GET /api/openapi`（不带凭据） | 401 |
+| API 回归（对线上） | 367/367 |
+| DOM 回归（对同版实例） | 236/236 |
+
+### 顺带
+
+`AGENTS.md` 的测试基线那段补了一句：除 API/DOM/e2e，另有 `test:i18n` 与 `test:openapi` 两条静态自检，改接口后要跑 `--gen`。
+
 ## v0.29.50
 
 ## 测试提速与 i18n 补齐（C9 / C10）
