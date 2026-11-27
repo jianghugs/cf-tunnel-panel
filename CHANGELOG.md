@@ -2,6 +2,26 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.64
+
+## Caddy 日志拆成两个文件：access.log 只留访问日志
+
+之前 `logging.logs.default` 一个文件接所有日志，`access.log` 里混着三成 `admin.api` 与 `tls` 行 —— 其中 `admin.api` 每 10 秒两条，来自面板自己给 Caddy 加的 healthcheck（`wget http://127.0.0.1:20190/config/`）。后果是：10MB 滚动、`roll_keep:3` 的配额被噪声吃掉三分之一，真实访问历史跟着缩水；面板做「最近请求 / 命中哪条规则 / 错误率」统计时还要逐行 `JSON.parse` 再丢掉这些行。
+
+### 改动
+- `src/core/paths.js`：新增 `otherLogPathForCaddy()` → `<CADDY_LOG_DIR>/caddy.log`。
+- `src/core/caddy.js` 的 `buildCaddyConfig()`：日志拆两个 logger ——
+  - `access`：`include: ["http.log.access"]`、写 `/logs/access.log`、`roll_size_mb:10 / roll_keep:3`（与原来一致，面板统计读这个文件，路径没变）；
+  - `default`：`exclude: ["http.log.access"]`、写 `/logs/caddy.log`、`roll_size_mb:5 / roll_keep:2`（admin.api、tls、启动信息都在这）。
+
+### 上线前的验证（吸取 v0.29.46 的教训：Caddy 配置错字段会连带停服）
+1. 一次性 Caddy 容器验证配置形状：`access.log` 只有 `{"logger":"http.log.access"...}`，`caddy.log` 里是 `admin.api` / `http` / 启动行，两文件都正常生成。
+2. 临时面板实例 + 一次性 Caddy（admin 20299、业务 8089、`/logs` 挂临时目录）真跑一次 `POST /api/caddy/push` → `{"ok":true,"routeCount":7}`；随后经 8089 打面板得到正常响应，`access.log` 里 `logger` 统计 `{'http.log.access': 2}`、`caddy.log` 里 `{'admin.api': 8, 'http': 2, ...}` —— 分流确认。
+3. 注意：临时实例的 `state.json` 必须先把 `settings.caddyListen` 改成 `:8089` 再启动，否则会把测试 Caddy 绑到生产 8080 上（这一步第一次漏了，白跑一轮）。
+
+### 校验
+`tools/check.sh` 五项全绿；`node --check src/core/caddy.js src/core/paths.js` 通过。
+
 ## v0.29.63
 
 ## 修掉一个「上线了但按下去会报错」的真问题
