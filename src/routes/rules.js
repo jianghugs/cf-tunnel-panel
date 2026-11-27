@@ -153,7 +153,7 @@ async function handle(p, req, res, url) {
         auditRecord({
           action: f0.enabled === false ? '停用规则' : '启用规则',
           target: String(f0.name || f0.path || f0.id),
-          actor: auth.who, ip: clientIpOf(req), method: req.method, path: p, status: 200, ms: 0,
+          actor: authOf(req).who, ip: clientIpOf(req), method: req.method, path: p, status: 200, ms: 0,
         });
       }
       return sendJson(res, 200, { ok: true, routes: state.routes.map(publicRoute), caddy });

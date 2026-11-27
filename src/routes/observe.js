@@ -277,7 +277,7 @@ async function handle(p, req, res, url) {
     const n = state.settings.notify || {};
     if (!n.url) return sendJson(res, 400, { ok: false, error: '还没配置通知地址（设置 → 掉线通知）' });
     const sent = await notify(entry.event, entry.title, entry.text || '', { force: true, ignoreDisabled: true });
-    auditRecord({ actor: auth.who, ip: clientIpOf(req), method: 'POST', path: p, status: sent ? 200 : 502, action: '重发通知', target: `${entry.event} · ${entry.title}` });
+    auditRecord({ actor: authOf(req).who, ip: clientIpOf(req), method: 'POST', path: p, status: sent ? 200 : 502, action: '重发通知', target: `${entry.event} · ${entry.title}` });
     if (!sent) return sendJson(res, 502, { ok: false, error: '重发失败，看下面的「通知发送记录」里最新一条的原因' });
     return sendJson(res, 200, { ok: true, event: entry.event, title: entry.title });
   }
