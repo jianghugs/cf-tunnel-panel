@@ -2,6 +2,20 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.56
+
+## 修 0.29.55 的回归：一键封禁 500
+
+0.29.55 把 `/api/security/deny|allow` 搬进 `src/routes/ops.js` 时，模块头是从 `cf.js` 复制的，
+漏了 `net`（`net.isIP` 判断），`POST /api/security/deny` 直接 500 `{"ok":false,"error":"net is not defined"}`，
+面板「一键封禁」不可用。
+
+同批扫了所有 `src/routes/*.js` 与 `src/http/*.js`，一次补齐漏掉的模块：
+`ops.js` → net；`cf.js` → dns、http；`monitor.js` → crypto；`shares.js` → fs、path。
+
+验证：预览实例 `POST /api/security/deny` → `{"ok":true,"added":true,"entry":"192.0.2.77/32"}`，
+`/api/security/allow` 回退正常；`node --check` 全部通过。
+
 ## v0.29.55
 
 ## 重构：server.js 从 2380 行减到 784 行
