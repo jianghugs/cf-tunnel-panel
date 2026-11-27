@@ -10,6 +10,7 @@
  */
 
 const { fs, path, DATA_DIR, VERSION, log, sendJson, readBody, authOf, clientIpOf, auditRecord } = require('./_deps');
+const { getV4 } = require('../core/httpv4');
 const _integrations = require('../core/integrations');
 
 const VER_RE = /^\d+\.\d+\.\d+$/;
