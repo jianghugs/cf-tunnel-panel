@@ -115,7 +115,7 @@ async function handle(p, req, res, url) {
   }
 
   if (p === '/api/audit/days' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, days: auditDays(), keepDays: require('./core/audit').KEEP_DAYS });
+    return sendJson(res, 200, { ok: true, days: auditDays(), keepDays: require('../core/audit').KEEP_DAYS });
   }
 
   if (p === '/api/audit' && req.method === 'GET') {
