@@ -750,3 +750,15 @@ table { font-variant-numeric: tabular-nums; }
   text-decoration: none;
 }
 .side .brand .ver-badge:hover { background: var(--acc); color: #fff; text-decoration: none; }
+
+/* ---- 域名体检（工具箱） */
+.chk-line{display:flex;align-items:center;gap:6px;font-size:var(--fs-sm);color:var(--fg-2);min-height:34px}
+.diag-verdict{font-size:var(--fs-md);padding:10px 12px;border-radius:var(--radius);border:1px solid var(--line);background:var(--panel2);margin-bottom:8px}
+.diag-verdict.ok{border-color:var(--ok-line);background:var(--ok-soft)}
+.diag-verdict.warn{border-color:var(--warn-line);background:var(--warn-soft)}
+.diag-verdict.fail{border-color:var(--err-line);background:var(--err-soft)}
+.diag-row{display:flex;align-items:baseline;gap:8px;padding:5px 2px;border-bottom:1px dashed var(--line);font-size:var(--fs-sm)}
+.diag-row:last-child{border-bottom:0}
+.diag-row b{flex:0 0 6.5em;font-weight:600;color:var(--fg)}
+.diag-detail{flex:1 1 auto;min-width:0;color:var(--fg-2);word-break:break-all}
+.diag-ms{flex:0 0 auto;color:var(--dim-2);font-variant-numeric:tabular-nums}

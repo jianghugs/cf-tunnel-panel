@@ -101,8 +101,53 @@ async function saveCf() {
   }
 }
 
+// ---- 域名体检
+const DIAG_TAG = { ok: ['ok', '正常'], warn: ['warn', '注意'], fail: ['err', '失败'], skip: ['', '跳过'] };
+function diagRow(s) {
+  const t = DIAG_TAG[s.status] || ['', s.status || ''];
+  const tag = t[0] ? `<span class="tag ${t[0]}">${t[1]}</span>` : `<span class="tag">${t[1]}</span>`;
+  const ms = s.ms != null ? `<span class="diag-ms">${s.ms}ms</span>` : '';
+  return `<div class="diag-row">${tag}<b>${esc(s.name || '')}</b><span class="diag-detail">${esc(s.detail || '')}</span>${ms}</div>`;
+}
+
+async function runDiag() {
+  const out = $('#diagOut');
+  if (!out) return;
+  const host = ($('#diagHost').value || '').trim();
+  const path = ($('#diagPath').value || '/').trim() || '/';
+  if (!host) { toast('先填个域名，比如 demo.jianghugs.shop', 'warn'); $('#diagHost').focus(); return; }
+  const pub = $('#diagPublic').checked ? '&public=1' : '';
+  out.innerHTML = '<div class="hint">正在体检…</div>';
+  try {
+    const q = '/api/diag?host=' + encodeURIComponent(host) + '&path=' + encodeURIComponent(path) + pub;
+    const d = await api(q);
+    if (!d.ok) { out.innerHTML = `<div class="hint err">${esc(d.error || '体检失败')}</div>`; return; }
+    const v = d.verdict || {};
+    const icon = v.level === 'ok' ? '✅' : v.level === 'warn' ? '⚠️' : '❌';
+    out.innerHTML = `<div class="diag-verdict ${esc(v.level || '')}">${icon} <b>${esc(v.at || '')}</b> · ${esc(v.text || '')}</div>`
+      + (d.steps || []).map(diagRow).join('');
+  } catch (e) {
+    out.innerHTML = `<div class="hint err">${esc(e.message)}</div>`;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   $('#btnDockerRefresh').addEventListener('click', loadDocker);
+
+  // ---- 域名体检（支持 /tools?host=x&path=/y 预填并自动跑，规则页「体检」按钮跳过来）
+  if ($('#btnDiag')) {
+    $('#btnDiag').addEventListener('click', runDiag);
+    $('#diagPath').addEventListener('keydown', (e) => { if (e.key === 'Enter') runDiag(); });
+    $('#diagHost').addEventListener('keydown', (e) => { if (e.key === 'Enter') runDiag(); });
+    const qs = new URLSearchParams(location.search);
+    const qh = qs.get('host');
+    if (qh) {
+      $('#diagHost').value = qh;
+      $('#diagPath').value = qs.get('path') || '/';
+      if (qs.get('public') === '1') $('#diagPublic').checked = true;
+      runDiag();
+    }
+  }
   $('#dockerBody').addEventListener('click', (e) => {
     const b = e.target.closest('[data-dock]');
     if (!b) return;

@@ -115,6 +115,7 @@ const _routesRules = require('./routes/rules');
 const _routesObserve = require('./routes/observe');
 const _routesMonitor = require('./routes/monitor');
 const _routesTunnels = require('./routes/tunnels');
+const _routesDiag = require('./routes/diag');
 const _routesVersions = require('./routes/versions');
 
 async function handler(req, res) {
@@ -505,6 +506,8 @@ async function handler(req, res) {
     await _routesMonitor.handle(p, req, res, url);
     if (res.writableEnded || res.headersSent) return;
     await _routesTunnels.handle(p, req, res, url);
+    if (res.writableEnded || res.headersSent) return;
+    await _routesDiag.handle(p, req, res, url);
     if (res.writableEnded || res.headersSent) return;
     await _routesVersions.handle(p, req, res, url);
     if (res.writableEnded || res.headersSent) return;

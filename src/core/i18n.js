@@ -1192,4 +1192,28 @@ const EN_V0320 = {
 };
 Object.assign(EN, EN_V0320);
 
+const EN_V0330 = {
+  '域名体检': 'Domain checkup',
+  '一条链路查到断点：规则命中 → 隧道出口 → 经本机 Caddy → 上游服务 → 公网 → 拦截策略': 'Follow one request end to end: rule match, tunnel, local Caddy, upstream, public edge, blocking policy',
+  '开始体检': 'Run checkup',
+  '路径': 'Path',
+  '从公网实测（经 Cloudflare）': 'Also test from the public edge (via Cloudflare)',
+  '填域名点「开始体检」。勾上「从公网实测」会真的从 Cloudflare 绕一圈，慢一点但能看出外部视角。': 'Enter a domain and run the checkup. Tick the public test to go through Cloudflare — slower, but it shows the outside view.',
+  '正常': 'OK',
+  '注意': 'Check',
+  '失败': 'Failed',
+  '跳过': 'Skipped',
+  '规则命中': 'Rule match',
+  '隧道出口': 'Tunnel',
+  '经本机 Caddy': 'Via local Caddy',
+  '上游服务': 'Upstream',
+  '备用上游': 'Backup upstream',
+  '公网（经 Cloudflare）': 'Public edge (Cloudflare)',
+  '拦截策略': 'Blocking policy',
+  '全链路': 'Whole chain',
+  '正在体检…': 'Checking…',
+  '每一段都正常': 'Every segment looks fine',
+};
+Object.assign(EN, EN_V0330);
+
 module.exports = { COOKIE, LANGS, EN, langOf, t, clientDict };

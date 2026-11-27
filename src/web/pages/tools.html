@@ -4,6 +4,22 @@
 </div>
 
 <div class="content stack">
+  <div class="card" id="diagCard">
+    <div class="hd">
+      <h2>域名体检</h2>
+      <div class="sub">一条链路查到断点：规则命中 → 隧道出口 → 经本机 Caddy → 上游服务 → 公网 → 拦截策略</div>
+      <div class="right"><button class="sm primary" id="btnDiag">开始体检</button></div>
+    </div>
+    <div class="bd stack">
+      <div class="form-grid">
+        <div class="field"><label>域名</label><input id="diagHost" placeholder="demo.jianghugs.shop" autocomplete="off" /></div>
+        <div class="field"><label>路径</label><input id="diagPath" value="/" autocomplete="off" /></div>
+        <div class="field"><label>&nbsp;</label><label class="chk-line"><input type="checkbox" id="diagPublic" /> 从公网实测（经 Cloudflare）</label></div>
+      </div>
+      <div id="diagOut"><div class="hint">填域名点「开始体检」。勾上「从公网实测」会真的从 Cloudflare 绕一圈，慢一点但能看出外部视角。</div></div>
+    </div>
+  </div>
+
   <div class="card flush">
     <div class="hd">
       <h2>本机 Docker 容器</h2>
