@@ -126,12 +126,15 @@ fi
 
 if [ "$DO_BUILD" -eq 1 ]; then
   step "6/6 构建镜像 + 滚动升级"
+  # 发版后要同时验「本机」和「公网」两跳：公网那条经 Cloudflare → cloudflared → Caddy，
+  # 曾经出现过本地 200、公网 502（两个 Caddy 抢 8080）的事故 —— 不验公网等于没发。
+  PANEL_HOST="${PANEL_HOST:-panel.jianghugs.shop}"
   node tools/codehash.js
   docker compose build panel --build-arg "GIT_SHA=$(git rev-parse --short HEAD)"
   docker tag cf-tunnel-panel:local "cf-tunnel-panel:$VERSION"
   IMG_HASH="$(docker run --rm --entrypoint cat cf-tunnel-panel:local /app/.code-hash)"
   echo "镜像内 code-hash：$IMG_HASH"
-  MOUNT_SRC=0 bash tools/rolling-upgrade.sh --apply
+  PANEL_HOST="$PANEL_HOST" MOUNT_SRC=0 bash tools/rolling-upgrade.sh --apply
   echo
   echo "--- /healthz ---"
   # 滚动升级会把 leader 换到另一色，端口可能是 8090 也可能是 8095 → 两个都探，取有响应的那个
@@ -155,6 +158,20 @@ if d.get("drift") is not False:
     sys.exit("drift 为 true：镜像内代码与运行代码不一致")
 ' || die "部署校验失败（见上一行原因）"
   echo "✅ 部署校验通过"
+
+  # 再验一次公网：本机 curl 通不代表外网通。
+  PUBLIC_BASE="${PANEL_PUBLIC:-https://$PANEL_HOST}"
+  if [ -n "$PANEL_HOST" ]; then
+    PCODE="000"
+    for _ in 1 2 3; do
+      PCODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$PUBLIC_BASE/healthz" 2>/dev/null || echo 000)
+      [ "$PCODE" = "200" ] && break
+      sleep 2
+    done
+    echo "  公网 $PUBLIC_BASE/healthz → $PCODE"
+    [ "$PCODE" = "200" ] || die "公网不通（$PCODE）：查 cloudflared 是否在线、8080 上是不是只有生产 Caddy"
+    echo "✅ 公网校验通过"
+  fi
 fi
 
   # 旧镜像回收：面板镜像每版约 460MB，只留最近 2 个 tag

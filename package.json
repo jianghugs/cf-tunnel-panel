@@ -20,7 +20,8 @@
     "test:i18n": "node tools/i18n-check.js",
     "test:api": "node test/api.test.mjs",
     "test:dom": "node test/dom.test.cjs",
-    "test:openapi": "node tools/openapi.js --check"
+    "test:openapi": "node tools/openapi.js --check",
+    "test:smoke": "node test/smoke.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

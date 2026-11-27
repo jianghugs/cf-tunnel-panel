@@ -22,6 +22,11 @@ jobs:
       - name: 模块 require 自检
         run: node tools/check-requires.js
 
+      - name: 文案字典与接口清单
+        run: |
+          node tools/i18n-check.js
+          node tools/openapi.js --check
+
       - name: 语法检查（全部 JS）
         run: |
           for f in src/server.js src/core/*.js src/http/*.js src/routes/*.js src/web/assets/*.js test/*.mjs test/*.cjs; do
@@ -62,6 +67,11 @@ jobs:
           cat /tmp/audit.json
           grep -q '"ok":true' /tmp/audit.json
           grep -q '/api/settings' /tmp/audit.json
+
+      - name: 接口冒烟（每条路由都打一遍）
+        env:
+          PANEL_URL: http://127.0.0.1:8199
+        run: node test/smoke.mjs
 
       - name: 失败时打印服务端日志
         if: failure()
