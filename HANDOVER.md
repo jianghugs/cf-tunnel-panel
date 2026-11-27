@@ -207,7 +207,9 @@ EOF
 bash tools/release.sh <版本号> --notes-file /tmp/notes.md --build --force
 ```
 
-脚本会做 6 步，第 6 步（构建）在宿主机没有 node 的环境里会失败 —— 见 §10 的 shim。
+脚本会做 6 步。宿主机没有 node 也不影响：release.sh 自己会用 tools/node.sh 把 node 调用丢进容器（见 §10）。
+现在发版还会顺带验两条路：经 Caddy 打 8080（Host 头）与公网 https://$PANEL_HOST，
+公网不通会直接报错退出（查 cloudflared 是否在线、8080 上是不是只有生产 Caddy）。
 升级完成后一定要确认：`/healthz` 的 `version` 是新的、`code == imageCode`、`drift == false`、`tunnels` 全是 running。
 
 ---
@@ -222,17 +224,16 @@ bash tools/release.sh <版本号> --notes-file /tmp/notes.md --build --force
 
 ## 10. 本机环境（重要约束）
 
-- **宿主机没有 node/npm**。发版脚本里三处 `node` 调用需要 shim：
+- **宿主机没有 node/npm**，所有 node 命令都走仓库里的 `tools/node.sh`：有本机 node 就用本机的，
+  没有就丢给 `node:22-alpine` 容器（容器里保持同一绝对路径，所以脚本里的相对路径与 `require` 照旧可用）。
 
   ```bash
-  mkdir -p /tmp/nodebin && cat > /tmp/nodebin/node <<'EOF'
-  #!/bin/bash
-  exec docker run --rm -i --network host \
-    -v /opt/cf-tunnel-panel:/opt/cf-tunnel-panel -w "$PWD" node:22-alpine node "$@"
-  EOF
-  chmod +x /tmp/nodebin/node
-  # 之后：PATH=/tmp/nodebin:$PATH bash tools/release.sh ...
+  tools/node.sh -p 'process.version'
+  tools/node.sh tools/codehash.js
   ```
+
+  `tools/release.sh` 已经自己接上了（宿主没 node 时内部包一层），发版命令不用变，也不需要再手工
+  `PATH=/tmp/nodebin:$PATH`。**不要再手造 `/tmp` 里的 shim**：重启即丢，换个环境就忘。
 
 - **Docker Hub 直连不可用**（`registry-1.docker.io` 只回 IPv6，本机无 v6 出口；daemon.json 里配的镜像源已全部失效）。
   构建前先走可达的镜像站把基础镜像拉下来本地打 tag：

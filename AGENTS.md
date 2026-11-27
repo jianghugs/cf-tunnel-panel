@@ -130,6 +130,18 @@ docker run --rm --network host -v "$PWD":/w -v "$PWD/data":/data -v /tmp/jsd:/j 
 
 验「未命中 → 404」别用 fetch 直打 `127.0.0.1:8080`：本部署有一条 `host=127.0.0.1 path=/` 的兜底规则（带 basicAuth），任何路径都会被它接住变成 401。要换一个没有任何规则匹配的 Host（`e2e-caddy.mjs` 已改成 `rawGet(path, 'e2e-no-rule.example.test')`）。
 
+### 跑 node：一律用 tools/node.sh
+
+本机是 Alpine 宿主、没装 node。所有要 node 的命令都走仓库里的跑器：
+
+```bash
+tools/node.sh -p 'process.version'   # 有本机 node 就用，没有就丢给 node:22-alpine 容器
+tools/node.sh tools/codehash.js
+```
+
+`tools/release.sh` 已经自己接上了，发版照旧 `bash tools/release.sh <版本> --notes-file /tmp/notes.md --build --force`，
+不要再手工 `PATH=/tmp/nodebin:$PATH`。
+
 ## 8. 排障速查
 
 | 现象 | 先看什么 |

@@ -61,9 +61,15 @@ for (const file of files) {
   // 2) 内置模块被用却没 require
   for (const mod of CORE) {
     if (!new RegExp(`(^|[^\\w$.])${mod}\\s*\\.`).test(raw)) continue;
+    // 声明方式：① const fs = require('fs') ② 任意 require('fs')
+    // ③ 从本地模块解构拿到同名绑定，例如 const { fs, path } = require('./_deps')
+    //    （内置模块的 require 在 _deps.js 里，这层解构是合法用法，不算漏）
+    const fromDeps = [...raw.matchAll(/(?:const|let|var)\s*\{([^}]*)\}\s*=\s*require\(/g)]
+      .some((m) => m[1].split(',').map((s) => s.split(':').pop().replace(/\s+/g, '')).includes(mod));
     const declared =
       new RegExp(`(?:const|let|var)\\s+${mod}\\s*=\\s*require\\(\\s*['"]${mod}['"]\\s*\\)`).test(raw)
-      || new RegExp(`require\\(\\s*['"]${mod}['"]\\s*\\)`).test(raw);
+      || new RegExp(`require\\(\\s*['"]${mod}['"]\\s*\\)`).test(raw)
+      || fromDeps;
     // 同名局部变量/参数也算声明：参数位、赋值、解构、箭头参数
     const shadowed =
       new RegExp(`(?:const|let|var)\\s+${mod}\\b`).test(raw)

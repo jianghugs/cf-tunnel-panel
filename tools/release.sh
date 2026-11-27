@@ -37,6 +37,11 @@ step() { echo; echo "== $* =="; }
 
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
+
+# 宿主机没 node 时统一走 tools/node.sh（有 node 用本机的，没有就丢给容器；见 tools/node.sh 顶部说明）
+if ! command -v node >/dev/null 2>&1; then
+  node() { CFP_NODE_IN_CONTAINER=1 "$ROOT/tools/node.sh" "$@"; }
+fi
 step "检查环境（$ROOT）"
 git rev-parse --git-dir >/dev/null 2>&1 || die "当前目录不是 git 仓库"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
