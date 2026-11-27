@@ -108,6 +108,9 @@ const _httpOnReq = require('./http/onreq');
 const _routesBackups = require('./routes/backups');
 const _routesShares = require('./routes/shares');
 const _routesCf = require('./routes/cf');
+const _routesRules = require('./routes/rules');
+const _routesObserve = require('./routes/observe');
+const _routesMonitor = require('./routes/monitor');
 
 async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
@@ -399,26 +402,7 @@ async function handler(req, res) {
       'no-store, no-transform', { 'Cloudflare-CDN-Cache-Control': 'no-store' });
   }
 
-  // 旧版单页（保留以便随时回退）
-  if (p === '/api/audit/trend' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, buckets: auditByHour(url.searchParams.get('hours') || 12) });
-  }
 
-  if (p === '/api/audit/days' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, days: auditDays(), keepDays: require('./core/audit').KEEP_DAYS });
-  }
-  if (p === '/api/audit' && req.method === 'GET') {
-    const date = url.searchParams.get('date') || '';
-    // limit 必须夹住：之前直接透传，一个 ?limit=99999 就能拉 300KB+
-    const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 200, 1), 2000);
-    return sendJson(res, 200, {
-      ...auditList({
-        limit, q: url.searchParams.get('q') || '', date,
-        act: url.searchParams.get('act') || '', bad: url.searchParams.get('bad') === '1',
-      }),
-      stats: auditStats(), days: auditDays(), actions: _audit.actions(),
-    });
-  }
 
   if (p === '/api/state' && req.method === 'GET') {
     maybeReloadState();   // 另一实例可能刚改过配置
@@ -459,291 +443,16 @@ async function handler(req, res) {
     });
   }
 
-  if (p === '/api/caddy/config' && req.method === 'GET') {
-    try {
-      return sendJson(res, 200, { ok: true, config: buildCaddyConfig() });
-    } catch (e) {
-      return sendJson(res, 200, { ok: false, error: e.message });
-    }
-  }
 
-  if (p === '/api/rules/test' && req.method === 'POST') {
-    try {
-      const body = await readBody(req);
-      return sendJson(res, 200, await probeUpstream(body.upstream));
-    } catch (e) {
-      return sendJson(res, 400, { ok: false, error: e.message });
-    }
-  }
 
-  if (p === '/api/match' && req.method === 'POST') {
-    try {
-      const body = await readBody(req);
-      return sendJson(res, 200, simulateMatch(body.path, body.host, body.method));
-    } catch (e) {
-      return sendJson(res, 400, { ok: false, error: e.message });
-    }
-  }
 
-  // 一键体检：把「哪里不对」一次性查出来（面板/Caddy/出口/Prometheus/Grafana/磁盘）
-  if (p === '/api/selfcheck' && req.method === 'GET') {
-    const scope = String(url.searchParams.get('scope') || '').toLowerCase();
-    let ids = String(url.searchParams.get('ids') || '').split(',').map((x) => x.trim()).filter(Boolean);
-    // scope=quick：跳过要过 Cloudflare 的出口探测（只跑静态项），也就不写留痕
-    if (!ids.length && scope === 'quick') ids = _selfcheck.CHECK_IDS.slice();
-    if (ids.length) {
-      const unknown = ids.filter((x) => !_selfcheck.CHECK_IDS.includes(x) && !/^exit-/.test(x));
-      if (unknown.length) {
-        return sendJson(res, 400, { ok: false, error: `未知的检查项：${unknown.join('、')}`, valid: _selfcheck.CHECK_IDS });
-      }
-    }
-    const manualIds = String(url.searchParams.get('ids') || '').trim();
-    const { out } = await runSelfcheckOnce({ ids, scope: (scope === 'quick' && !manualIds) ? 'quick' : '' });
-    const only = String(url.searchParams.get('only') || '').toLowerCase();
-    if (only === 'bad') {
-      const bad = (out.checks || []).filter((c) => c.status !== 'ok');
-      return sendJson(res, 200, { ...out, checks: bad, shown: bad.length });
-    }
-    return sendJson(res, 200, out);
-  }
 
-  if (p === '/api/selfcheck/history' && req.method === 'GET') {
-    const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 20, 1), 300);
-    const hours = Math.min(Math.max(Number(url.searchParams.get('hours')) || 24, 1), 72);
-    const items = _selfcheck.history(limit);
-    const since = Date.now() - hours * 3600e3;
-    const atOf = (h) => { const v = h && h.at; const n = Number(v); return Number.isFinite(n) && n > 1e12 ? n : (Date.parse(v) || 0); };
-    const inWindow = items.filter((h) => atOf(h) >= since);
-    const scopes = {
-      all: inWindow.filter((h) => h.scope !== 'quick').length,
-      quick: inWindow.filter((h) => h.scope === 'quick').length,
-    };
-    // ?scope=all 只给全量记录：前端拿它做聚合，免得自己筛
-    const wantScope = String(url.searchParams.get('scope') || '').toLowerCase();
-    const itemsOut = wantScope === 'all' ? items.filter((h) => h.scope !== 'quick') : items;
-    return sendJson(res, 200, {
-      ok: true,
-      last: _selfcheck.lastResult(),
-      hours,
-      scopes,
-      runs: inWindow.length,
-      coverageHours: items.length ? Math.max(0, Math.round((Date.now() - (atOf(items[items.length - 1]) || Date.now())) / 36e5 * 10) / 10) : 0,
-      fails: _selfcheck.fails(inWindow),
-      store: _selfcheck.storeInfo(),
-      items: itemsOut,
-    });
-  }
 
-  // 监控页：面板替你去问 Prometheus（targets / 告警），省得再开一个标签页
-  if (p === '/api/monitor/status' && req.method === 'GET') {
-    const base = String((state.settings.monitoring || {}).promUrl || '').trim().replace(/\/+$/, '');
-    const activeMutes = () => {
-      const nowMs = Date.now();
-      return ((state.settings.alerts || {}).mutes || [])
-        .filter((m) => m && m.name && (!m.until || Date.parse(m.until) > nowMs))
-        .map((m) => ({ name: m.name, until: m.until || '', note: m.note || '' }));
-    };
-    if (!/^https?:\/\/[^\s]+$/i.test(base)) {
-      return sendJson(res, 200, { ok: false, promUrl: base, error: '还没配 Prometheus 地址（设置 → 监控嵌入）', mutes: activeMutes(), targets: [], alerts: [] });
-    }
-    const grab = async (pathname) => {
-      const r = await fetch(base + pathname, { signal: AbortSignal.timeout(4000) });
-      if (!r.ok) throw new Error(`${pathname} → HTTP ${r.status}`);
-      return r.json();
-    };
-    try {
-      const ready = await fetch(base + '/-/ready', { signal: AbortSignal.timeout(3000) }).then((r) => r.ok).catch(() => false);
-      let targets = [];
-      let alerts = [];
-      try {
-        const t = await grab('/api/v1/targets?state=active');
-        targets = ((t.data && t.data.activeTargets) || []).map((x) => ({
-          job: (x.labels && x.labels.job) || '', instance: (x.labels && x.labels.instance) || '',
-          health: x.health || 'unknown', scrapeUrl: x.scrapeUrl || '',
-          lastScrape: x.lastScrape || '', lastError: (x.lastError || '').slice(0, 200),
-        })).sort((a, b) => String(a.health).localeCompare(String(b.health)));
-      } catch (e) { targets = []; }
-      try {
-        const a = await grab('/api/v1/alerts');
-        alerts = ((a.data && a.data.alerts) || []).map((x) => ({
-          name: (x.labels && x.labels.alertname) || '', state: x.state || '',
-          severity: (x.labels && x.labels.severity) || '', summary: (x.annotations && x.annotations.summary) || '',
-          activeAt: x.activeAt || '',
-          labels: Object.fromEntries(Object.entries(x.labels || {}).filter(([k]) => ['id', 'name', 'mode', 'instance', 'job', 'status', 'severity'].includes(k))),
-        }));
-      } catch (e) { alerts = []; }
-      const down = targets.filter((t) => t.health !== 'up').length;
-      // 面板侧静默：只影响本页显示，Prometheus/Alertmanager 侧仍照常记录与通知
-      const nowMs = Date.now();
-      const mutes = ((state.settings.alerts || {}).mutes || [])
-        .filter((m) => m && m.name && (!m.until || Date.parse(m.until) > nowMs));
-      const muteMap = new Map(mutes.map((m) => [m.name, m]));
-      alerts = alerts.map((a) => ({ ...a, muted: muteMap.has(a.name), muteUntil: (muteMap.get(a.name) || {}).until || '' }));
-      return sendJson(res, 200, {
-        ok: true, promUrl: base, ready, targets, alerts,
-        summary: { total: targets.length, up: targets.length - down, down, muted: alerts.filter((a) => a.muted).length },
-        mutes: mutes.map((m) => ({ name: m.name, until: m.until || '', note: m.note || '' })),
-      });
-    } catch (e) {
-      return sendJson(res, 200, { ok: false, promUrl: base, error: `连不上 Prometheus：${e.message}`, mutes: activeMutes(), targets: [], alerts: [] });
-    }
-  }
 
-  if (p === '/api/alerts/hook-token' && req.method === 'GET') {
-    if ((auth.role || 'admin') !== 'admin') return sendJson(res, 403, { ok: false, error: '只有管理员能查看回调令牌' });
-    const cur = state.settings.alerts || (state.settings.alerts = { mutes: [], hookToken: '' });
-    if (!cur.hookToken) {
-      cur.hookToken = crypto.randomBytes(16).toString('hex');
-      saveState('alert-hook-token');
-    }
-    const host = String(((state.tunnels || []).find((t) => t.mode === 'named' && t.publicHostname) || {}).publicHostname || '');
-    return sendJson(res, 200, {
-      ok: true,
-      token: cur.hookToken,
-      localUrl: `http://127.0.0.1:${PORT}/api/alerts/hook`,
-      hint: 'Alertmanager 跑在同一台机器上就用 localUrl；写在 alertmanager.yml 的 webhook_configs.url，并加 headers: {x-cfp-token: 令牌}',
-      publicHost: host,
-    });
-  }
 
-  if (p === '/api/monitor/mute' && req.method === 'POST') {
-    try {
-      const body = await readBody(req);
-      const name = String(body.name || '').trim();
-      if (!/^[A-Za-z][A-Za-z0-9_]{1,60}$/.test(name)) return sendJson(res, 400, { ok: false, error: '告警名字不合法' });
-      const minutes = Math.min(Math.max(Number(body.minutes) || 60, 5), 24 * 60);
-      const until = new Date(Date.now() + minutes * 60000).toISOString();
-      const note = String(body.note || '').slice(0, 200);
-      const cur = state.settings.alerts || (state.settings.alerts = { mutes: [] });
-      cur.mutes = (cur.mutes || []).filter((m) => m && m.name !== name);
-      cur.mutes.push({ name, until, note });
-      saveState('alert-mute');
-      auditRecord({ action: '静默告警', target: `${name} 至 ${until}`, ip: clientIpOf(req), actor: auth.who, method: req.method, path: p, status: 200, ms: 0 });
-      return sendJson(res, 200, { ok: true, name, until, minutes });
-    } catch (e) {
-      return sendJson(res, 400, { ok: false, error: e.message });
-    }
-  }
 
-  if (p === '/api/monitor/unmute' && req.method === 'POST') {
-    try {
-      const body = await readBody(req);
-      const name = String(body.name || '').trim();
-      const cur = state.settings.alerts || (state.settings.alerts = { mutes: [] });
-      const before = (cur.mutes || []).length;
-      cur.mutes = (cur.mutes || []).filter((m) => m && m.name !== name);
-      const removed = before - cur.mutes.length;
-      saveState('alert-unmute');
-      auditRecord({ action: '取消静默', target: name || '(全部)', ip: clientIpOf(req), actor: auth.who, method: req.method, path: p, status: 200, ms: 0 });
-      return sendJson(res, 200, { ok: true, removed });
-    } catch (e) {
-      return sendJson(res, 400, { ok: false, error: e.message });
-    }
-  }
 
-  // 按出口聚合：多条隧道跑不同域名时，看谁在吃流量、谁在报错
-  if (p === '/api/tunnels/stats' && req.method === 'GET') {
-    const url2 = new URL(req.url, 'http://x');
-    const hours = Math.min(Math.max(Number(url2.searchParams.get('hours')) || 24, 0.1), 168);
-    const d = readAccess(4000, { since: Date.now() - hours * 3600 * 1000, maxBytes: 4 * 1024 * 1024 });
-    const rows = (d && d.rows) || [];
-    const hostOf = (t) => {
-      const u = publicUrlOf(t) || '';
-      const m = /^https?:\/\/([^/:]+)/i.exec(u);
-      return m ? m[1].toLowerCase() : '';
-    };
-    const buckets = new Map(); // host -> {count, ok, err4, err5, bytes, durs: []}
-    const other = { count: 0, hosts: new Map() };
-    const known = new Map();
-    for (const t of state.tunnels) {
-      const h = hostOf(t);
-      if (h) known.set(h, t.id);
-    }
-    for (const r of rows) {
-      const host = String(r.host || '').toLowerCase();
-      if (!host) continue;
-      if (!known.has(host)) {
-        other.count += 1;
-        other.hosts.set(host, (other.hosts.get(host) || 0) + 1);
-        continue;
-      }
-      const b = buckets.get(host) || { count: 0, ok: 0, err4: 0, err5: 0, bytes: 0, durs: [] };
-      b.count += 1;
-      const st = Number(r.status) || 0;
-      if (st >= 500) b.err5 += 1; else if (st >= 400) b.err4 += 1; else b.ok += 1;
-      b.bytes += Number(r.size) || 0;
-      if (r.durMs) b.durs.push(r.durMs);
-      buckets.set(host, b);
-    }
-    const p95 = (arr) => {
-      if (!arr.length) return 0;
-      const a = arr.slice().sort((x, y) => x - y);
-      return a[Math.min(a.length - 1, Math.floor(a.length * 0.95))];
-    };
-    const tunnels = state.tunnels.map((t) => {
-      const host = hostOf(t);
-      const b = (host && buckets.get(host)) || { count: 0, ok: 0, err4: 0, err5: 0, bytes: 0, durs: [] };
-      return {
-        id: t.id, name: t.name, mode: t.mode, host,
-        count: b.count, ok: b.ok, err4: b.err4, err5: b.err5,
-        bytes: b.bytes, p95: p95(b.durs),
-      };
-    });
-    const others = [...other.hosts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
-      .map(([host, count]) => ({ host, count }));
-    return sendJson(res, 200, { ok: true, hours, sampled: rows.length, tunnels, other: { count: other.count, hosts: others }, note: (d && d.note) || '' });
-  }
 
-  // 按规则聚合访问日志：谁在被访问、谁在报错、哪条慢
-  if (p === '/api/routes/stats' && req.method === 'GET') {
-    const url = new URL(req.url, 'http://x');
-    const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 2000, 50), 8000);
-    // hours：只看最近 N 小时（0/缺省 = 不按时间过滤，取最后 limit 条）
-    const hours = Math.min(Math.max(Number(url.searchParams.get('hours')) || 0, 0), 168);
-    const since = hours ? Date.now() - hours * 3600 * 1000 : 0;
-    const d = readAccess(limit, { since, maxBytes: hours ? 4 * 1024 * 1024 : 512 * 1024 });
-    const rows = (d && d.rows) || [];
-    const acc = new Map(); // index -> {count, s2, s3, s4, s5, durs, bytes}
-    const unmatched = { count: 0, s4: 0, s5: 0 };
-    for (const r of rows) {
-      const path = String(r.uri || '/').split('?')[0];
-      const m = simulateMatch(path, r.host || '', r.method || 'GET');
-      const idx = m && m.matched ? (m.ofIndex != null ? m.ofIndex : m.index - 1) : -1;
-      const st = Number(r.status) || 0;
-      if (idx < 0) {
-        unmatched.count += 1;
-        if (st >= 500) unmatched.s5 += 1; else if (st >= 400) unmatched.s4 += 1;
-        continue;
-      }
-      let a = acc.get(idx);
-      if (!a) { a = { count: 0, s1: 0, s2: 0, s3: 0, s4: 0, s5: 0, durs: [], bytes: 0 }; acc.set(idx, a); }
-      a.count += 1;
-      if (st >= 500) a.s5 += 1; else if (st >= 400) a.s4 += 1; else if (st >= 300) a.s3 += 1; else if (st >= 200) a.s2 += 1; else if (st >= 100) a.s1 += 1;
-      if (r.durMs) a.durs.push(r.durMs);
-      a.bytes += Number(r.size) || 0;
-    }
-    const pct = (arr, p) => {
-      if (!arr.length) return 0;
-      const q = arr.slice().sort((x, y) => x - y);
-      return q[Math.min(q.length - 1, Math.max(0, Math.round((p / 100) * (q.length - 1))))];
-    };
-    const list = [...acc.entries()].map(([idx, a]) => {
-      const rule = state.routes[idx] || {};
-      return {
-        index: idx, id: rule.id, name: rule.name || rule.path || '(未命名)', path: rule.path || '',
-        host: rule.host || '', tunnelId: rule.tunnelId || '',
-        count: a.count, ok: a.s2 + a.s3 + a.s1, err4: a.s4, err5: a.s5, upgraded: a.s1,
-        errRate: a.count ? Math.round(((a.s4 + a.s5) / a.count) * 1000) / 10 : 0,
-        p50: pct(a.durs, 50), p95: pct(a.durs, 95), max: a.durs.length ? Math.max(...a.durs) : 0,
-        avg: a.durs.length ? Math.round(a.durs.reduce((x, y) => x + y, 0) / a.durs.length) : 0,
-        bytes: a.bytes,
-      };
-    }).sort((a, b) => b.count - a.count);
-    return sendJson(res, 200, {
-      ok: true, available: !!d.available, sampled: rows.length, totalRoutes: state.routes.length,
-      hours, unmatched, routes: list, note: d.note || '',
-    });
-  }
 
   if (p === '/api/audit.csv' && req.method === 'GET') {
     const url = new URL(req.url, 'http://x');
@@ -871,32 +580,6 @@ async function handler(req, res) {
     return res.end(body);
   }
 
-  if (p === '/api/routes' && req.method === 'POST') {
-    try {
-      const body = await readBody(req);
-      const nextRoutes = validateRoutes(body.routes, state.routes);
-      const g = guard.inspect(nextRoutes, { panelPort: PORT, prevRoutes: state.routes });
-      if (g.blocked && !body.force) {
-        return sendJson(res, 409, { ok: false, code: 'GUARD', issues: g.issues, error: g.issues[0].reason, hint: '确认无误就带 force:true 再提交' });
-      }
-      const prevEnabled = new Map((state.routes || []).map((r) => [r.id, r.enabled !== false]));
-      state.routes = nextRoutes;
-      saveState('routes');
-      await pushCaddy();
-      const flipped = nextRoutes.filter((r) => prevEnabled.has(r.id) && prevEnabled.get(r.id) !== (r.enabled !== false));
-      if (flipped.length === 1) {
-        const f0 = flipped[0];
-        auditRecord({
-          action: f0.enabled === false ? '停用规则' : '启用规则',
-          target: String(f0.name || f0.path || f0.id),
-          actor: auth.who, ip: clientIpOf(req), method: req.method, path: p, status: 200, ms: 0,
-        });
-      }
-      return sendJson(res, 200, { ok: true, routes: state.routes.map(publicRoute), caddy });
-    } catch (e) {
-      return sendJson(res, 400, { ok: false, error: e.message });
-    }
-  }
 
   if (p === '/api/settings' && req.method === 'POST') {
     try {
@@ -1141,7 +824,6 @@ async function handler(req, res) {
   if (p === '/api/tunnel/start' && req.method === 'POST') { startAll(); return sendJson(res, 200, { ok: true }); }
   if (p === '/api/tunnel/stop' && req.method === 'POST') { stopAll(); return sendJson(res, 200, { ok: true }); }
 
-  if (p === '/api/caddy/push' && req.method === 'POST') { const c = await pushCaddy(); return sendJson(res, 200, { ok: c.ok, caddy: c }); }
 
   // ---------- 运维账号（admin 专属，perm 已挡） ----------
   if (p === '/api/operator' && req.method === 'POST') {
@@ -1248,20 +930,7 @@ async function handler(req, res) {
     }
   }
 
-  if (p === '/api/logs' && req.method === 'GET') {
-    const after = Number(url.searchParams.get('after') || 0);
-    return sendJson(res, 200, { logs: logs.filter((l) => l.seq > after), last: logSeq });
-  }
 
-  if (p === '/api/logs/stream') {
-    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-    res.write('retry: 3000\n\n');
-    for (const l of logs.slice(-80)) res.write(`data: ${JSON.stringify(l)}\n\n`);
-    sseClients.add(res);
-    const ka = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 20000);
-    req.on('close', () => { clearInterval(ka); sseClients.delete(res); });
-    return;
-  }
 
   // 导出/导入：整份配置（可脱敏）
   // 配置即代码：把可公开的配置导成 YAML，方便进 git 做 diff / review
@@ -1445,33 +1114,12 @@ async function handler(req, res) {
     if (res.writableEnded || res.headersSent) return;
     await _routesCf.handle(p, req, res, url);
     if (res.writableEnded || res.headersSent) return;
-  }
-  // --- Cloudflare API 增强：验证 token / 账号域名发现 / 隧道详情 / DNS 记录 ---
-  if (p === '/api/traffic') {
-    const hours = Math.min(72, Math.max(1, Number(url.searchParams.get('hours')) || 12));
-    return sendJson(res, 200, { ok: true, ...trafficByHour(hours) });
-  }
-  // 按归属规则的流量趋势：哪个服务在吃流量
-  if (p === '/api/traffic/paths') {
-    const hours = Math.min(72, Math.max(1, Number(url.searchParams.get('hours')) || 12));
-    const top = Math.min(8, Math.max(1, Number(url.searchParams.get('top')) || 4));
-    return sendJson(res, 200, { ok: true, ...trafficByPath(hours, top) });
-  }
-  if (p === '/api/history') return sendJson(res, 200, { ok: true, points: history.sampleList(), max: HISTORY_MAX, shared: true });
-  if (p === '/api/notify/history') return sendJson(res, 200, { ok: true, items: history.notifyList().slice().reverse(), shared: true });
-  if (p === '/api/notify/resend' && req.method === 'POST') {
-    let body = {};
-    try { body = await readBody(req); } catch { body = {}; }
-    const seqN = Number(body.seq || 0);
-    const all = history.notifyList();
-    const entry = history.notifyBySeq(seqN) || all[all.length - 1];
-    if (!entry) return sendJson(res, 400, { ok: false, error: '还没有任何通知记录可以重发' });
-    const n = state.settings.notify || {};
-    if (!n.url) return sendJson(res, 400, { ok: false, error: '还没配置通知地址（设置 → 掉线通知）' });
-    const sent = await notify(entry.event, entry.title, entry.text || '', { force: true, ignoreDisabled: true });
-    auditRecord({ actor: auth.who, ip: clientIpOf(req), method: 'POST', path: p, status: sent ? 200 : 502, action: '重发通知', target: `${entry.event} · ${entry.title}` });
-    if (!sent) return sendJson(res, 502, { ok: false, error: '重发失败，看下面的「通知发送记录」里最新一条的原因' });
-    return sendJson(res, 200, { ok: true, event: entry.event, title: entry.title });
+    await _routesRules.handle(p, req, res, url);
+    if (res.writableEnded || res.headersSent) return;
+    await _routesObserve.handle(p, req, res, url);
+    if (res.writableEnded || res.headersSent) return;
+    await _routesMonitor.handle(p, req, res, url);
+    if (res.writableEnded || res.headersSent) return;
   }
   if (p === '/api/openapi' && req.method === 'GET') {
     try {
@@ -1693,6 +1341,11 @@ async function runSelfcheckQuiet() {
     log('自检失败（不影响面板运行）: ' + (e && e.message), 'panel');
   }
 }
+
+// 把体检执行器挂到共享句柄上，供 src/routes/monitor.js 调用（它只保留 HTTP 处理）
+const _runtime = require('./core/runtime');
+_runtime.runSelfcheckOnce = runSelfcheckOnce;
+_runtime.runSelfcheckQuiet = runSelfcheckQuiet;
 
 const server = tlsOpts ? https.createServer(tlsOpts, onReq) : http.createServer(onReq);
 
