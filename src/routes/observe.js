@@ -158,6 +158,59 @@ async function handle(p, req, res, url) {
     });
   }
 
+  // 访问统计下钻：按规则 / 域名 / 状态码，给曲线 + Top 路径 + 最近原始日志
+  if (p === '/api/drill' && req.method === 'GET') {
+    const q = url.searchParams;
+    const rule = (q.get('rule') || '').trim();
+    const host = (q.get('host') || '').trim().toLowerCase();
+    const status = (q.get('status') || '').trim(); // '2xx'|'3xx'|'4xx'|'5xx'|'err'
+    const hours = Math.min(72, Math.max(1, Number(q.get('hours')) || 12));
+    const since = Date.now() - hours * 3600 * 1000;
+    const d = readAccess(4000, { since, maxBytes: 4 * 1024 * 1024 });
+    const all = (d && d.rows) || [];
+    const isErr = (st) => st >= 400;
+    const filtered = all.filter((r) => {
+      const st = Number(r.status) || 0;
+      if (status === 'err') { if (!isErr(st)) return false; }
+      else if (/^[2-5]xx$/.test(status)) { if (Math.floor(st / 100) !== Number(status[0])) return false; }
+      if (host && String(r.host || '').toLowerCase() !== host) return false;
+      if (rule) {
+        const m = simulateMatch(String(r.uri || '/').split('?')[0], r.host || '', r.method || 'GET');
+        const idx = m && m.matched ? (m.ofIndex != null ? m.ofIndex : m.index - 1) : -1;
+        const rr = idx >= 0 ? (state.routes[idx] || {}) : {};
+        const name = rr.name || rr.id || '';
+        if (!(rr.id === rule || name === rule || (name && name.includes(rule)))) return false;
+      }
+      return true;
+    });
+    const buckets = new Map();
+    for (const r of filtered) {
+      const t = Date.parse(String(r.ts || '').replace(' ', 'T'));
+      if (!Number.isFinite(t)) continue;
+      const hh = new Date(t).getHours();
+      let b = buckets.get(hh);
+      if (!b) { b = { total: 0, err: 0 }; buckets.set(hh, b); }
+      b.total += 1;
+      if (isErr(Number(r.status) || 0)) b.err += 1;
+    }
+    const curve = [...buckets.entries()].sort((a, b) => a[0] - b[0])
+      .map(([hh, b]) => ({ h: `${String(hh).padStart(2, '0')}:00`, ...b }));
+    const paths = new Map();
+    for (const r of filtered) {
+      const k = String(r.uri || '/').split('?')[0] || '/';
+      paths.set(k, (paths.get(k) || 0) + 1);
+    }
+    const topPaths = [...paths.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
+      .map(([k, v]) => ({ k, v }));
+    const errTotal = filtered.filter((r) => isErr(Number(r.status) || 0)).length;
+    return sendJson(res, 200, {
+      ok: true, available: !!d.available, hours, sampled: all.length,
+      total: filtered.length, err: errTotal,
+      errRate: filtered.length ? Math.round((errTotal / filtered.length) * 1000) / 10 : 0,
+      curve, topPaths, rows: filtered.slice(-20), note: d.note || '',
+    });
+  }
+
   // Caddy 自身日志（启动 / admin API / 证书），和访问日志不是一个文件
   if (p === '/api/caddy/log' && req.method === 'GET') {
     const n = Math.min(1000, Math.max(20, Number(url.searchParams.get('n')) || 200));

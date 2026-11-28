@@ -1228,4 +1228,10 @@ const EN_V0340 = {
 };
 Object.assign(EN, EN_V0340);
 
+const EN_V0350 = {
+  '下钻': 'Drill down',
+  '还没有选择下钻对象': 'Pick a rule, host, or status code to drill into.',
+};
+Object.assign(EN, EN_V0350);
+
 module.exports = { COOKIE, LANGS, EN, langOf, t, clientDict };

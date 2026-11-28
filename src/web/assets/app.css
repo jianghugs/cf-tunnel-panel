@@ -768,3 +768,13 @@ table { font-variant-numeric: tabular-nums; }
 .batch-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel2)}
 .batch-bar .sub{margin:0 4px}
 .sel{display:inline-flex;align-items:center;padding:0 2px;cursor:pointer}
+
+
+/* 访问统计下钻 */
+.drillable{cursor:pointer}
+.drill-btn{margin-left:8px;padding:0 6px}
+.drill-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;font-size:var(--fs-sm)}
+.drill-paths{list-style:none;margin:0;padding:0}
+.drill-paths li{display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px dashed var(--line);font-size:var(--fs-sm)}
+.drill-paths li:last-child{border-bottom:0}
+.drill-paths .mono{font-size:var(--fs-xs);color:var(--fg-2);word-break:break-all}

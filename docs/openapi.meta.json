@@ -167,6 +167,7 @@
   ],
   "summaries": {
     "/api/diag": "域名体检：把规则、隧道、Caddy、上游、公网、拦截策略串成一条链路，指出断在哪一段",
+    "/api/drill": "访问统计下钻：按规则 / 域名 / 状态码聚合最近请求的曲线、Top 路径与最近原始日志",
     "/api/login": "用面板账号登录，成功后写会话 Cookie；失败次数与来源 IP 都受节流限制",
     "/api/logout": "退出当前会话",
     "/api/alerts/hook": "接收 Alertmanager 的告警回调，转发到通知渠道",

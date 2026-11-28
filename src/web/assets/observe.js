@@ -67,12 +67,13 @@ function renderAccess() {
   box.innerHTML = `
     <div class="row" style="padding:10px 12px;gap:8px;border-bottom:1px solid var(--line);flex-wrap:wrap">
       <span class="tag">最近 ${s.total || 0} 条</span>
-      <span class="tag ok">2xx ${st('2xx')}</span>
-      <span class="tag">3xx ${st('3xx')}</span>
-      <span class="tag warn">4xx ${st('4xx')}</span>
-      <span class="tag err">5xx ${st('5xx')}</span>
+      <span class="tag ok drillable" data-drill-status="2xx" title="下钻：最近 2xx 的曲线与明细">2xx ${st('2xx')}</span>
+      <span class="tag drillable" data-drill-status="3xx" title="下钻：最近 3xx 的曲线与明细">3xx ${st('3xx')}</span>
+      <span class="tag warn drillable" data-drill-status="4xx" title="下钻：最近 4xx 的曲线与明细">4xx ${st('4xx')}</span>
+      <span class="tag err drillable" data-drill-status="5xx" title="下钻：最近 5xx 的曲线与明细">5xx ${st('5xx')}</span>
       ${filtering ? `<span class="tag info">筛选后 ${list.length} 条</span>` : ''}
       ${(s.topPaths || []).slice(0, 3).map((x) => `<span class="tag" title="最近窗口里这个路径命中 ${esc(String(x.v))} 次">${esc(x.k)} · ${x.v} 次</span>`).join('')}
+      ${(s.topHosts || []).slice(0, 3).map((x) => `<span class="tag drillable" data-drill-host="${esc(x.k)}" title="下钻：这个域名的曲线与明细">${esc(x.k)} · ${x.v} 次</span>`).join('')}
     </div>
     <div class="tbl-wrap">
       <table class="stackable"><thead><tr><th>时间</th><th>方法</th><th>路径</th><th>状态</th><th>耗时</th><th>来源 IP</th></tr></thead>
@@ -296,7 +297,7 @@ async function loadRouteStats() {
       const errTag = r.err5 ? `<span class="tag err">${r.err5} 个 5xx</span>`
         : r.err4 ? `<span class="tag warn">${r.err4} 个 4xx</span>` : '<span class="tag ok">正常</span>';
       return `<tr>
-        <td><strong>${esc(r.name)}</strong><div class="muted mono" style="font-size:11px">${esc(r.path || '/')}${r.host ? ' · ' + esc(r.host) : ''}</div></td>
+        <td><strong>${esc(r.name)}</strong><button class="sm ghost drill-btn" type="button" data-drill-rule="${esc(r.id)}" data-drill-label="${esc(r.name)}" title="下钻：这条规则的流量曲线、Top 路径和最近请求">下钻</button><div class="muted mono" style="font-size:11px">${esc(r.path || '/')}${r.host ? ' · ' + esc(r.host) : ''}</div></td>
         <td>${r.count}</td>
         <td>${errTag}<div class="muted" style="font-size:11px">${r.errRate}% 错误</div></td>
         <td class="mono" data-label="延迟">P50 ${r.p50} · P95 <strong>${r.p95}</strong>${r.max ? ` · 最慢 ${r.max}` : ''} <span class="muted">ms</span></td>
@@ -406,6 +407,51 @@ document.addEventListener('click', async (e) => {
   loadSecurity().catch(() => {});
   if ($('#btnRstatRefresh')) $('#btnRstatRefresh').addEventListener('click', () => loadRouteStats().catch((e) => toast(e.message)));
   loadRouteStats().catch(() => {});
+  // 下钻：点规则 / 状态码 / 域名 → 曲线 + Top 路径 + 最近 20 条原始日志
+  async function openDrill(label, qs) {
+    const card = $('#drillCard'); const body = $('#drillBody'); const sub = $('#drillSub');
+    if (!card || !body) return;
+    card.classList.remove('hidden');
+    if (sub) sub.textContent = label;
+    body.innerHTML = '<div class="empty">读取中…</div>';
+    try {
+      const d = await api('/api/drill?' + qs);
+      if (!d.available) { body.innerHTML = `<div class="hint">${esc(d.note || '还没有访问日志')}</div>`; return; }
+      const curve = d.curve || [];
+      const maxB = Math.max(1, ...curve.map((c) => c.total));
+      const bars = curve.map((c) => {
+        const h = Math.max(4, Math.round((c.total / maxB) * 18));
+        return `<span class="bar" data-s="${c.err ? 'fail' : 'ok'}" style="height:${h}px" title="${esc(c.h)} 共 ${c.total} 次 · 错误 ${c.err}"></span>`;
+      }).join('');
+      const paths = (d.topPaths || []).map((x) => `<li><span class="mono">${esc(x.k)}</span><span class="muted">${x.v} 次</span></li>`).join('');
+      const rowsHtml = (d.rows || []).slice().reverse().map((r) => `<tr>
+        <td class="mono">${esc((r.ts || '').slice(11, 19))}</td>
+        <td class="mono">${esc(r.method)}</td>
+        <td class="mono" title="${esc((r.host || '') + ' · ' + (r.ua || ''))}">${esc((r.uri || '').slice(0, 70))}</td>
+        <td class="mono ${r.status >= 500 ? 'err-hint' : r.status >= 400 ? '' : 'ok-hint'}">${r.status}</td>
+        <td class="mono">${r.durMs}ms</td>
+      </tr>`).join('');
+      body.innerHTML = `
+        <div class="drill-meta"><span class="tag">${d.total} 次命中</span><span class="tag ${d.err ? 'err' : 'ok'}">${d.err} 个错误 · ${d.errRate}%</span><span class="muted">采样 ${d.sampled} 条 · 最近 ${d.hours} 小时</span></div>
+        ${bars ? `<div class="sc-hist-wrap"><div class="sc-hist" role="img" aria-label="每小时的请求量">${bars}</div><div class="chart-sum muted" style="margin-top:6px">${curve.map((c) => `${esc(c.h)} ${c.total}`).join(' · ')}</div></div>` : '<div class="hint">这个窗口没有命中</div>'}
+        ${paths ? `<div class="hint" style="margin:10px 0 4px">Top 路径</div><ul class="drill-paths">${paths}</ul>` : ''}
+        <div class="hint" style="margin:10px 0 4px">最近 ${(d.rows || []).length} 条</div>
+        <div class="tbl-wrap"><table class="stackable"><thead><tr><th>时间</th><th>方法</th><th>路径</th><th>状态</th><th>耗时</th></tr></thead><tbody>${rowsHtml || '<tr><td colspan="5" class="muted">没有匹配的请求</td></tr>'}</tbody></table></div>`;
+      card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } catch (e) {
+      body.innerHTML = `<div class="hint err">读取失败：${esc(e.message)}</div>`;
+    }
+  }
+  function closeDrill() { const c = $('#drillCard'); if (c) c.classList.add('hidden'); }
+  if ($('#btnDrillClose')) $('#btnDrillClose').addEventListener('click', closeDrill);
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-drill-rule], [data-drill-status], [data-drill-host]');
+    if (!b) return;
+    e.preventDefault();
+    if (b.dataset.drillRule) openDrill(b.dataset.drillLabel || b.dataset.drillRule, 'rule=' + encodeURIComponent(b.dataset.drillRule));
+    else if (b.dataset.drillStatus) openDrill('状态码 ' + b.dataset.drillStatus, 'status=' + b.dataset.drillStatus);
+    else if (b.dataset.drillHost) openDrill('域名 ' + b.dataset.drillHost, 'host=' + encodeURIComponent(b.dataset.drillHost));
+  });
   // 更多筛选（来源 IP / 时间范围）默认收起，1280 宽下四个控件刚好占满一整行
   const moreBtn = $('#btnMoreFilters');
   const moreBox = $('#accMore');
