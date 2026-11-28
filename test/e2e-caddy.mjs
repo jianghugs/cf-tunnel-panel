@@ -38,6 +38,15 @@ const j = async (p, o = {}) => {
   return { status: r.status, d: await r.json().catch(() => ({})) };
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const waitFor = async (fn, ms = 6000, step = 120) => {
+  const t0 = Date.now();
+  for (;;) {
+    let v; try { v = await fn(); } catch { v = null; }
+    if (v) return v;
+    if (Date.now() - t0 > ms) return null;
+    await sleep(step);
+  }
+};
 
 // ---------- 快照与还原 ----------
 let snapRoutes = null, snapMaint = null, snapIpDeny = null, restored = false;
@@ -93,9 +102,14 @@ const probeRoutes = [
 ];
 const setR = await j('/api/routes', { method: 'POST', body: { routes: [...probeRoutes, ...snapRoutes.filter((r) => !probeRoutes.some((p) => p.id === r.id))] } });
 ok('下发的配置被 Caddy 接受', setR.status === 200 && setR.d.caddy && setR.d.caddy.ok, JSON.stringify(setR.d.caddy || setR.d).slice(0, 90));
-await sleep(500);
+await sleep(120);
 
 const get = (path, headers = {}) => fetch(`http://127.0.0.1:${CADDY_PORT}${path}`, { headers, redirect: 'manual' });
+const untilStatus = async (path, want, ms = 6000) => {
+  let last;
+  await waitFor(async () => { last = await get(path); return last.status === want; }, ms, 120);
+  return last;
+};
 
 // 手写一个 HTTP/1.1 请求，唯一目的是能自定义 Host 头（fetch/undici 不允许）
 function rawGet(path, host, extra = '') {
@@ -186,24 +200,20 @@ function rawGet(path, host, extra = '') {
 // 7) 维护模式：整站 503 + Retry-After
 {
   const on = await j('/api/settings', { method: 'POST', body: { maintenance: { on: true, body: '维护中（E2E）', retryAfter: 60 } } });
-  await sleep(400);
-  const r = await get('/e2strip/healthz');
+  const r = await untilStatus('/e2strip/healthz', 503);
   ok('维护模式下返回 503', on.status === 200 && r.status === 503, `set=${on.status} get=${r.status}`);
   ok('维护模式带 Retry-After', !!r.headers.get('retry-after'), r.headers.get('retry-after') || '');
   await j('/api/settings', { method: 'POST', body: { maintenance: { on: false, body: snapMaint && snapMaint.body, retryAfter: snapMaint && snapMaint.retryAfter } } });
-  await sleep(400);
-  const after = await get('/e2strip/healthz');
+  const after = await untilStatus('/e2strip/healthz', 200);
   ok('关掉维护模式后恢复 200', after.status === 200, String(after.status));
 }
 // 8) IP 黑名单：本机 IP 拉黑 → 403
 {
   await j('/api/settings', { method: 'POST', body: { security: { ipDeny: '127.0.0.1/32' } } });
-  await sleep(400);
-  const r = await get('/e2strip/healthz');
+  const r = await untilStatus('/e2strip/healthz', 403);
   ok('IP 黑名单命中返回 403', r.status === 403, String(r.status));
   await j('/api/settings', { method: 'POST', body: { security: { ipDeny: snapIpDeny } } });
-  await sleep(400);
-  const back = await get('/e2strip/healthz');
+  const back = await untilStatus('/e2strip/healthz', 200);
   ok('清空黑名单后恢复 200', back.status === 200, String(back.status));
 }
 // 8.5) 监控页与静默接口（不依赖 Prometheus 是否在跑）
@@ -302,7 +312,11 @@ function rawGet(path, host, extra = '') {
     const beforeTitle = (await j('/api/state')).d.state.settings.panelTitle;
     const tmpTitle = 'e2e 跨实例标题';
     await j('/api/settings', { method: 'POST', body: { panelTitle: tmpTitle } });
-    await sleep(2600);
+    await waitFor(async () => {
+      const rr = await fetch(`http://127.0.0.1:${standbyPort}/api/state`, { headers: { Authorization: basic } });
+      const dd = await rr.json().catch(() => ({}));
+      return !!(dd.state && dd.state.settings && dd.state.settings.panelTitle === tmpTitle);
+    }, 12000, 200);
     const sbR = await fetch(`http://127.0.0.1:${standbyPort}/api/state`, { headers: { Authorization: basic } });
     const sbD = await sbR.json().catch(() => ({}));
     ok('备份实例看到 leader 刚改的配置', !!(sbD.state && sbD.state.settings && sbD.state.settings.panelTitle === tmpTitle),
