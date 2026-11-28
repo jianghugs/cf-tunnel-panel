@@ -2264,13 +2264,34 @@
         }
       }
     },
+    "/api/upstream/health": {
+      "get": {
+        "tags": [
+          "其他"
+        ],
+        "summary": "每条启用规则上游的当前状态与 24 小时可用率/延迟历史",
+        "responses": {
+          "200": {
+            "description": "成功返回 JSON，包含 ok: true 与结果字段"
+          },
+          "400": {
+            "description": "参数或后端错误，JSON 里 error 字段给出原因"
+          },
+          "401": {
+            "description": "未登录或会话过期"
+          },
+          "409": {
+            "description": "本实例为备份槽位（STANDBY），写操作被拒绝"
+          }
+        }
+      }
+    },
     "/api/version/latest": {
       "get": {
         "tags": [
           "其他"
         ],
-        "summary": "GET /api/version/latest",
-        "description": "（未填写说明：见 src/server.js 对应分支）",
+        "summary": "查 GitHub 最新版本，用于侧栏新版本角标",
         "responses": {
           "200": {
             "description": "成功返回 JSON，包含 ok: true 与结果字段"
@@ -2292,8 +2313,7 @@
         "tags": [
           "其他"
         ],
-        "summary": "GET /api/versions",
-        "description": "（未填写说明：见 src/server.js 对应分支）",
+        "summary": "本机已拉取的 cf-tunnel-panel 镜像列表（含当前版本）",
         "responses": {
           "200": {
             "description": "成功返回 JSON，包含 ok: true 与结果字段"
@@ -2315,8 +2335,7 @@
         "tags": [
           "其他"
         ],
-        "summary": "GET /api/versions/rollback",
-        "description": "（未填写说明：见 src/server.js 对应分支）",
+        "summary": "回滚请求状态（GET 查询 / POST 发起，由宿主机 ops-agent 执行）",
         "responses": {
           "200": {
             "description": "成功返回 JSON，包含 ok: true 与结果字段"
@@ -2336,8 +2355,7 @@
         "tags": [
           "其他"
         ],
-        "summary": "POST /api/versions/rollback",
-        "description": "（未填写说明：见 src/server.js 对应分支）",
+        "summary": "回滚请求状态（GET 查询 / POST 发起，由宿主机 ops-agent 执行）",
         "responses": {
           "200": {
             "description": "成功返回 JSON，包含 ok: true 与结果字段"

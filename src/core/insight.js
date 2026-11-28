@@ -360,11 +360,17 @@ async function refreshUpstreamHealth() {
       if (t && !targets.has(t.url)) targets.set(t.url, t);
     }
   }
+  const now = Date.now();
   for (const [url, t] of targets) {
     const res = await tcpProbeOnce(t.host, t.port);
-    upstreamHealth.set(url, { url, ok: res.ok, ms: res.ms, error: res.error, at: Date.now() });
+    upstreamHealth.set(url, { url, ok: res.ok, ms: res.ms, error: res.error, at: now });
+    let arr = upstreamHist.get(url);
+    if (!arr) { arr = []; upstreamHist.set(url, arr); }
+    arr.push({ t: now, ok: res.ok, ms: res.ms });
+    const cutoff = now - 86400000;
+    while (arr.length && arr[0].t < cutoff) arr.shift();
   }
-  for (const url of Array.from(upstreamHealth.keys())) if (!targets.has(url)) upstreamHealth.delete(url);
+  for (const url of Array.from(upstreamHealth.keys())) if (!targets.has(url)) { upstreamHealth.delete(url); upstreamHist.delete(url); }
 }
 
 /** 规则上游可能带路径前缀，匹配时按 origin+path 前缀宽松比对。 */
@@ -604,6 +610,7 @@ function diffRoutes(backupRoutes, currentRoutes) {
 // ---------------------------------------------------------------- 徽章 / metrics
 
 const upstreamHealth = new Map(); // upstream url -> { ok, ms, error, at }
+const upstreamHist = new Map(); // upstream url -> [{ t, ok, ms }]（24h 环形，60s 一个点）
 
 
 /**
@@ -684,4 +691,4 @@ function securityAttempts(hours = 24, limit = 3000) {
   return out;
 }
 
-module.exports = { caddyLogStats, readCaddyOwnLog, countPanelReq, panelReqSnapshot, upstreamHealth, HISTORY_MAX, badgeSvg, diffRoutes, healthOf, histTick, metricsText, readAccess, readLogText, refreshUpstreamHealth, requestsLastMinute, rtHistory, sampleHistory, shadowReport, simulateMatch, systemInfo, tcpProbeOnce, trafficByHour, trafficByPath, securityAttempts, upstreamTarget };
+module.exports = { caddyLogStats, readCaddyOwnLog, countPanelReq, panelReqSnapshot, upstreamHealth, upstreamHist, HISTORY_MAX, badgeSvg, diffRoutes, healthOf, histTick, metricsText, readAccess, readLogText, refreshUpstreamHealth, requestsLastMinute, rtHistory, sampleHistory, shadowReport, simulateMatch, systemInfo, tcpProbeOnce, trafficByHour, trafficByPath, securityAttempts, upstreamTarget };

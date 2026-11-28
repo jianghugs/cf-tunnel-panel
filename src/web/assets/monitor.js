@@ -312,9 +312,46 @@ async function load() {
     }
   }
 
+  async function loadUpHealth() {
+    const b = $('#upHealthBody');
+    if (!b) return;
+    try {
+      const d = await api('/api/upstream/health');
+      const note = $('#upHealthNote');
+      if (note) note.textContent = d.available ? (d.rows.length + ' 条上游') : '';
+      if (!d.available || !d.rows || !d.rows.length) {
+        b.innerHTML = '<div class="empty empty-inline">没有可探测的上游（停用规则不计）——启用规则后，服务端每分钟探一次</div>';
+        return;
+      }
+      b.innerHTML = d.rows.map((r) => {
+        const dot = r.ok
+          ? `<span class="dot ok" title="TCP 通 · ${r.ms}ms"></span>`
+          : `<span class="dot err" title="不通：${esc(r.error || '')}"></span>`;
+        const backup = r.backup ? ' <span class="tag warn">备用</span>' : '';
+        return `<div class="uprow"><div class="uprow-main"><b>${esc(r.name || r.id)}</b> ${dot} <span class="muted mono">${esc(r.upstream)}</span>${backup}</div>`
+          + `<div class="uprow-meta">可用率 <b>${r.avail24h == null ? '—' : r.avail24h + '%'}</b> · 平均 ${r.avgMs24h == null ? '—' : r.avgMs24h + 'ms'} · P95 ${r.p95Ms24h == null ? '—' : r.p95Ms24h + 'ms'} · ${r.samples} 次采样</div>`
+          + miniBars(r.hist || []) + `</div>`;
+      }).join('');
+    } catch (e) { b.innerHTML = `<div class="hint err">${esc(e.message)}</div>`; }
+  }
+
+  function miniBars(hist) {
+    if (!hist.length) return '<div class="sub">还没有历史：服务端每 60 秒探一次，过几分钟再来看</div>';
+    const N = 96;
+    const step = Math.max(1, Math.ceil(hist.length / N));
+    const bars = [];
+    for (let i = 0; i < hist.length; i += step) {
+      const chunk = hist.slice(i, i + step);
+      const ok = chunk.filter((x) => x.ok).length;
+      const k = ok === chunk.length ? 'ok' : ok === 0 ? 'fail' : 'warn';
+      bars.push(`<span class="bar" data-s="${k}" style="height:${4 + 14 * (ok / chunk.length)}px" title="${chunk.length} 次探测 · ${ok} 通 · ${new Date(chunk[0].t).toTimeString().slice(0, 5)}"></span>`);
+    }
+    return `<div class="sc-hist uphist" role="img" aria-label="24 小时上游健康">${bars.join('')}</div>`;
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     load().catch((e) => toast(e.message, 'err'));
-    if ($('#btnMonRefresh')) $('#btnMonRefresh').addEventListener('click', () => load().catch((e) => toast(e.message, 'err')));
+    if ($('#btnMonRefresh')) $('#btnMonRefresh').addEventListener('click', () => { load().catch((e) => toast(e.message, 'err')); loadUpHealth().catch(() => {}); });
     if ($('#btnCheck')) $('#btnCheck').addEventListener('click', () => runCheck());
     // 体检范围记一下：常点「快速」的人不用每次重选
     const scSel = $('#checkScope');
@@ -351,6 +388,7 @@ async function load() {
     });
     paintLastCheck();
     paintCheckHistory();
+    loadUpHealth().catch(() => {});
     // /monitor#check：命令面板「一键体检」跳过来时，滚到体检卡并直接跑一次
     if (location.hash === '#check' && $('#checkCard')) {
       $('#checkCard').scrollIntoView({ block: 'start', behavior: 'smooth' });

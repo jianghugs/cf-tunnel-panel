@@ -17,6 +17,9 @@ const {
   http,
   crypto,
   authOf,
+  upstreamHealth,
+  healthOf,
+  upstreamHist,
 } = require('./_deps');
 
 async function handle(p, req, res, url) {
@@ -128,6 +131,34 @@ async function handle(p, req, res, url) {
     } catch (e) {
       return sendJson(res, 200, { ok: false, promUrl: base, error: `连不上 Prometheus：${e.message}`, mutes: activeMutes(), targets: [], alerts: [] });
     }
+  }
+
+  if (p === '/api/upstream/health' && req.method === 'GET') {
+    const rows = [];
+    for (const r of state.routes) {
+      if (r.enabled === false) continue;
+      for (const [isBackup, raw] of [[false, r.upstream], [true, r.backupUpstream]]) {
+        if (!raw) continue;
+        const cur = healthOf(raw);
+        if (!cur) continue;
+        const hist = upstreamHist.get(cur.url) || [];
+        const okPts = hist.filter((x) => x.ok);
+        const mss = okPts.map((x) => x.ms).filter((x) => Number.isFinite(x) && x >= 0);
+        const avg = mss.length ? Math.round(mss.reduce((a, b) => a + b, 0) / mss.length) : null;
+        const sorted = mss.slice().sort((a, b) => a - b);
+        const p95 = sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] : null;
+        rows.push({
+          id: r.id, name: r.name, host: r.host || '', path: r.path || '',
+          upstream: cur.url, backup: !!isBackup,
+          ok: !!cur.ok, ms: cur.ms, error: cur.error || null, at: cur.at,
+          samples: hist.length,
+          avail24h: hist.length ? Math.round((okPts.length / hist.length) * 1000) / 10 : null,
+          avgMs24h: avg, p95Ms24h: p95,
+          hist: hist.slice(-1440),
+        });
+      }
+    }
+    return sendJson(res, 200, { ok: true, available: rows.length > 0, checkedAt: Date.now(), rows });
   }
 
   if (p === '/api/alerts/hook-token' && req.method === 'GET') {

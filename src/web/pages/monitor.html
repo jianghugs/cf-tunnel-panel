@@ -35,6 +35,12 @@
     <div class="stat"><div class="k">面板角色</div><div class="v" id="monRole">—</div></div>
   </div>
 
+  <div class="card" id="upHealthCard">
+    <div class="hd"><h2>上游健康</h2><div class="sub">服务端每 60 秒探一次每条规则的上游 TCP，这里汇总 24 小时</div>
+      <div class="right"><span class="muted mono" id="upHealthNote"></span></div></div>
+    <div class="bd" id="upHealthBody"><div class="empty">正在查询…</div></div>
+  </div>
+
   <div class="card">
     <div class="hd"><h2>抓取目标</h2><div class="sub">Prometheus 每 15 秒抓一次面板的 /metrics（免登录）</div>
       <div class="right"><span class="muted mono" id="monPromUrl"></span></div></div>

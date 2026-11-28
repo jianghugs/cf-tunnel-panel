@@ -1234,4 +1234,13 @@ const EN_V0350 = {
 };
 Object.assign(EN, EN_V0350);
 
+const EN_V0360 = {
+  '上游健康': 'Upstream health',
+  '服务端每 60 秒探一次每条规则的上游 TCP，这里汇总 24 小时': 'The panel TCP-probes every rule upstream every 60s; here is the 24h summary.',
+  '没有可探测的上游（停用规则不计）——启用规则后，服务端每分钟探一次': 'No probeable upstreams (disabled rules excluded). Enable a rule and the panel probes it every minute.',
+  '还没有历史：服务端每 60 秒探一次，过几分钟再来看': 'No history yet — the panel probes every 60s, check back in a few minutes.',
+  '次采样': 'samples',
+  '条上游': 'upstreams',
+};
+Object.assign(EN, EN_V0360);
 module.exports = { COOKIE, LANGS, EN, langOf, t, clientDict };
