@@ -2,6 +2,40 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.66
+
+# v0.29.66 — 功能与实用性优化（五项）
+
+一轮把工具箱/观测/规则/监控/分享五个方向的实用性补齐，每项独立提交：
+
+## ① 域名体检 / 排障向导（`a2d494c`）
+- 新增 `GET /api/diag?host=&path=&public=1`：一条链路查「规则命中 → 隧道出口 → 经本机 Caddy → 上游服务 → 公网经 Cloudflare → 拦截策略」六段，逐段给状态/耗时/详情，末尾给出 verdict。
+- 工具箱页新增「域名体检」卡，支持深链 `/tools?host=demo.jianghugs.shop&path=/demo` 预填并自动跑。
+- 三坑已修：undici fetch 不允许改 Host（改用 `http.request` 带 Host）；`simulateMatch` 返回键是 `rule` 不是 `route`、`basicAuth` 是布尔；smoke 的 data 目录须 chown 1000:1000。
+
+## ② 规则批量操作（`5e50c03`）
+- 规则页每条加勾选框，批量栏支持：启用 / 停用 / 删除 / 改上游 / 换出口 / 全选 / 清除。
+- 只改内存标脏，由「保存规则」统一落盘，与既有流程一致。
+
+## ③ 访问统计下钻（`d19a3fd`）
+- 新增 `GET /api/drill`（rule / host / status / hours 四类过滤），聚合小时曲线 + Top 路径 + 最近 20 条原始日志。
+- 观测页：状态码 tag、Top 域名、规则行「下钻」按钮均可点，打开下钻卡（迷你柱条 + 路径榜 + 明细表）。
+
+## ④ 上游健康看板（`0008eb1`）
+- `insight.js` 加 24h 环形历史缓冲（`upstreamHist`，60s 一个点）。
+- 新增 `GET /api/upstream/health`：每条上游的当前状态 + 24h 可用率 / 平均 / P95 + 历史。
+- 监控页新增「上游健康」卡（状态点 + 三个指标 + 96 根迷你柱条）。
+
+## ⑤ 分享链接二维码 + 倒计时（`65f295e`）
+- `GET/POST /api/shares` 现返回二维码（服务端 `qrcode` 包生成 data URL，220px）。
+- 工具箱分享列表改成卡片：二维码 + 大号「复制链接」+ 秒级倒计时（`剩余 mm:ss` / `hh:mm:ss`，到期显「已过期」）。
+
+## 验证
+- `bash tools/check.sh` 全绿（i18n 重复键 0 / 空译文 0 / 未收录 0；openapi 96 路径 103 操作全覆盖；alerts；eslint）。
+- `test/smoke.mjs` 91/91；`test/dom.test.cjs` 236/236。
+- 浏览器实测（puppeteer）：下钻卡渲染、批量栏开合、二维码 img 与倒计时文本均正常，无 console/page error。
+- API 367/367 基线不变。
+
 ## v0.29.65
 
 ### 新增
