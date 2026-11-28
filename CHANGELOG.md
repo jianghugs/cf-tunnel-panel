@@ -2,6 +2,26 @@
 
 按日期倒序。功能细节与实测数据见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 
+## v0.29.67
+
+# v0.29.67 发布说明
+
+## 本轮内容（A 组全做 + B 组 4/5/7）
+
+- **A1 404 文案**：去掉写死的内网地址（原「请打开面板 http://<本机IP>:8090 添加规则」），改成「请打开面板，添加一条匹配这条路径的规则」；线上 404 文案已走面板 API 同步更新。
+- **A2 规则名 tooltip**：规则名输入框加 `title`，长名字不再只能看截断。
+- **A3 测试提速**：`test/e2e-caddy.mjs` 把 6 处固定 sleep 改成轮询（维护/黑名单用 untilStatus、跨实例同步用 waitFor），全套 22s → 4.8s，36/36 通过。
+- **B4 规则级限流**：每条规则可单独设每秒请求上限（rps/burst），生成 Caddy 配置时在规则 handle 前插 rate_limit（需 CADDY_RATELIMIT=1 的自定义镜像）。
+- **B5 路径重写**：规则可把 `/api/v1/*` 前缀重写成 `/v2/*`（path_regexp + rewrite，与 strip 二选一）。
+- **B7 证书到期体检**：监控页新增「证书到期」卡，从 Cloudflare 拉当前 zone 边缘证书；<14 天红、<30 天黄、Universal SSL 显示「自动续期」。
+
+## 验证
+
+- `bash tools/check.sh` 全绿：i18n（重复键 0 / 空译文 0 / 未收录 0）、OpenAPI（97 路径 / 104 操作）、告警规则副本一致、ESLint。
+- `test/dom.test.cjs` **236/236**；`test/smoke.mjs` **91/91**；`test/e2e-caddy.mjs` **36/36**（本地真 Caddy）。
+- 生产 API 回归 367/367（发布后随 rolling-upgrade 复跑）。
+- 证书接口实测：`/api/cf/certs` 返回 zone 的两条 Universal SSL（active + backup_issued）；Cloudflare 的 certificate_packs 不暴露 Universal SSL 到期日，故「剩余」列显示「自动续期」，自定义/高级证书才有具体天数。
+
 ## v0.29.66
 
 # v0.29.66 — 功能与实用性优化（五项）
