@@ -39,6 +39,16 @@
           <button class="sm ghost" id="btnCancelImport">取消</button>
         </div>
       </div>
+      <div id="batchBar" class="batch-bar hidden">
+        <label class="inline"><input class="chk" type="checkbox" id="batchAll" /> 全选</label>
+        <span class="sub">已选 <b id="batchN">0</b> 条</span>
+        <button class="sm" data-batch="enable">启用</button>
+        <button class="sm" data-batch="disable">停用</button>
+        <button class="sm ghost" data-batch="upstream">改上游…</button>
+        <button class="sm ghost" data-batch="scope">换出口…</button>
+        <button class="sm danger" data-batch="del">删除</button>
+        <button class="sm ghost" data-batch="clear">取消选择</button>
+      </div>
       <div id="ruleList"></div>
     </div>
   </div>

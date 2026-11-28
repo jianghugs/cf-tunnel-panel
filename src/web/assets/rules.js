@@ -8,6 +8,7 @@ let selectedExit = localStorage.getItem('cfp-scope') || '';
 let filterText = '';
 let dirty = false;
 const openRules = new Set(); // 展开中的规则（默认全部收起）
+const selectedRules = new Set(); // 批量操作勾选中的规则下标
 
 const TEMPLATES = [
   { name: '静态网站（nginx:80）', path: '/site', upstream: 'http://127.0.0.1:8088', strip: true },
@@ -56,6 +57,7 @@ function ruleHtml(r, i) {
   const open = openRules.has(openKey);
   return `<div class="rule${off ? ' off' : ''}${open ? ' open' : ''}" data-i="${i}" draggable="true">
     <div class="rule-h">
+      <label class="sel" title="勾选这条规则，配合上方批量操作"><input class="chk ruleSel" type="checkbox" data-sel="${i}" ${selectedRules.has(i) ? 'checked' : ''} /></label>
       <span class="drag" title="按住拖动可以调整顺序（顺序就是优先级：上面的先命中）" aria-label="拖动排序">⠿</span>
       <span class="idx">${i + 1}</span>
       <button class="sm ghost rule-tg" data-act="tg" aria-expanded="${open ? 'true' : 'false'}" title="展开 / 收起这条规则的详细设置">${open ? '▾' : '▸'}</button>
@@ -185,6 +187,7 @@ function render() {
   $('#scopeTag').textContent = selectedExit ? `只看「${exit ? exit.name : selectedExit}」的专属规则` : '全局规则：对所有出口生效';
   renderWarns();
   loadHits();
+  syncBatchBar();
 }
 
 // ?focus=<规则id>：从「按规则看流量」点过来时，切到该规则所在作用域、滚过去、闪一下
@@ -240,6 +243,21 @@ function renderWarns() {
       skipped.map((s) => `${esc(s.name || s.path)}（${esc(s.reason)}）`).join('；') + '</div>');
   }
   $('#warns').innerHTML = out.join('');
+}
+
+function selectedIndexes() {
+  return [...selectedRules].filter((i) => i >= 0 && i < rules.length).sort((a, b) => a - b);
+}
+
+function syncBatchBar() {
+  const bar = $('#batchBar');
+  if (!bar) return;
+  const n = selectedIndexes().length;
+  const all = $('#batchAll');
+  if (all) all.checked = n > 0 && n === scopeList().length;
+  const num = $('#batchN');
+  if (num) num.textContent = n;
+  bar.classList.toggle('hidden', n === 0);
 }
 
 function markDirty() {
@@ -371,6 +389,56 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   $('#btnAddRule').addEventListener('click', () => addRule(null));
   $('#btnSave').addEventListener('click', save);
+
+  // 批量操作：只改内存里的 rules，标脏后由「保存规则」统一落盘
+  const batchBar = $('#batchBar');
+  if (batchBar) {
+    const allBox = $('#batchAll');
+    if (allBox) allBox.addEventListener('change', () => {
+      selectedRules.clear();
+      if (allBox.checked) scopeList().forEach((r) => selectedRules.add(rules.indexOf(r)));
+      syncBatchBar();
+      render();
+    });
+    batchBar.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-batch]');
+      if (!b) return;
+      const act = b.dataset.batch;
+      if (act === 'clear') { selectedRules.clear(); render(); return; }
+      const idxs = selectedIndexes();
+      if (!idxs.length) { toast('先勾选要操作的规则', 'warn'); return; }
+      syncFromDom();
+      if (act === 'enable') idxs.forEach((i) => { rules[i].enabled = true; });
+      else if (act === 'disable') idxs.forEach((i) => { rules[i].enabled = false; });
+      else if (act === 'del') {
+        if (!confirm('删除选中的 ' + idxs.length + ' 条规则？')) return;
+        idxs.reverse().forEach((i) => { if (rules[i] && rules[i].id) openRules.delete(rules[i].id); rules.splice(i, 1); });
+        selectedRules.clear();
+        markDirty(); render();
+        return;
+      }
+      else if (act === 'upstream') {
+        const cur = rules[idxs[0]] ? (rules[idxs[0]].upstream || '') : '';
+        const v = prompt('把这 ' + idxs.length + ' 条规则的上游改成（http://...）：', cur);
+        if (v === null) return;
+        if (!/^https?:\/\//.test(v.trim())) { toast('上游要 http:// 或 https:// 开头', 'warn'); return; }
+        idxs.forEach((i) => { rules[i].upstream = v.trim(); });
+      }
+      else if (act === 'scope') {
+        const tun = (ST && ST.state.tunnels) || [];
+        const opts = tun.map((t) => t.name).join('、');
+        const v = prompt('换到哪个出口？留空 = 全局。可选：' + (opts || '（没有命名隧道）'), '');
+        if (v === null) return;
+        const tid = tun.find((t) => t.name === v.trim() || t.id === v.trim());
+        if (v.trim() && !tid) { toast('没找到这个出口，可填：' + (opts || '无') + '，或留空转全局', 'warn'); return; }
+        idxs.forEach((i) => { rules[i].tunnelId = tid ? tid.id : ''; });
+        toast('已改作用域，记得点保存生效', 'ok');
+      }
+      selectedRules.clear();
+      markDirty();
+      render();
+    });
+  }
   $('#ruleList').addEventListener('input', (e) => { if (e.target.closest('.rule')) markDirty(); });
   $('#ruleList').addEventListener('change', (e) => {
     const el = e.target.closest('.rule');
@@ -451,6 +519,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   $('#ruleList').addEventListener('click', async (e) => {
+    const selBox = e.target.closest('.ruleSel');
+    if (selBox) {
+      const si = parseInt(selBox.dataset.sel, 10);
+      if (selBox.checked) selectedRules.add(si); else selectedRules.delete(si);
+      syncBatchBar();
+      return;
+    }
     const mb = e.target.closest('[data-menu]');
     if (mb) {
       const pop = mb.parentNode.querySelector('.menu-pop');

@@ -762,3 +762,9 @@ table { font-variant-numeric: tabular-nums; }
 .diag-row b{flex:0 0 6.5em;font-weight:600;color:var(--fg)}
 .diag-detail{flex:1 1 auto;min-width:0;color:var(--fg-2);word-break:break-all}
 .diag-ms{flex:0 0 auto;color:var(--dim-2);font-variant-numeric:tabular-nums}
+
+
+/* 23b 规则批量操作 */
+.batch-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.batch-bar .sub{margin:0 4px}
+.sel{display:inline-flex;align-items:center;padding:0 2px;cursor:pointer}

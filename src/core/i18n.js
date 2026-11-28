@@ -1216,4 +1216,16 @@ const EN_V0330 = {
 };
 Object.assign(EN, EN_V0330);
 
+const EN_V0340 = {
+  '全选': 'Select all',
+  '已选': 'Selected ',
+  '条': ' rules',
+  '启用': 'Enable',
+  '停用': 'Disable',
+  '改上游…': 'Change upstream…',
+  '换出口…': 'Move to exit…',
+  '取消选择': 'Clear selection',
+};
+Object.assign(EN, EN_V0340);
+
 module.exports = { COOKIE, LANGS, EN, langOf, t, clientDict };
