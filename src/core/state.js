@@ -22,7 +22,7 @@ function defaultState() {
     settings: {
       caddyListen: process.env.CADDY_LISTEN || ':8080',
       notFoundBody:
-        'cf-tunnel-panel：这条路径没有匹配的代理规则。\n请打开面板 http://<本机IP>:8090 添加规则。',
+        'cf-tunnel-panel：这条路径没有匹配的代理规则。\n请打开面板，添加一条匹配这条路径的规则。',
       panelTitle: 'Cloudflare 隧道面板',
       // 维护模式：整站（Caddy 那层）直接 503，出口/隧道不用动
       maintenance: { on: false, body: '站点正在维护，请稍后再来。', retryAfter: 300 },

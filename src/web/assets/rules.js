@@ -61,7 +61,7 @@ function ruleHtml(r, i) {
       <span class="drag" title="按住拖动可以调整顺序（顺序就是优先级：上面的先命中）" aria-label="拖动排序">⠿</span>
       <span class="idx">${i + 1}</span>
       <button class="sm ghost rule-tg" data-act="tg" aria-expanded="${open ? 'true' : 'false'}" title="展开 / 收起这条规则的详细设置">${open ? '▾' : '▸'}</button>
-      <input data-k="name" value="${esc(r.name || '')}" placeholder="规则名字（可留空）" style="max-width:200px" />
+      <input data-k="name" value="${esc(r.name || '')}" placeholder="规则名字（可留空）" title="${esc(r.name || '')}" style="max-width:200px" />
       <span class="tag ${scoped ? 'acc' : ''}">${scoped ? '专属' : '全局'}</span>
       ${off ? '<span class="tag warn" title="这条规则已停用，访客不会命中，但它还留在列表里">已停用</span>' : ''}
       <span class="tag mono">${esc(r.path || '/')}</span>
