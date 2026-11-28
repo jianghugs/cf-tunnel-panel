@@ -1250,4 +1250,11 @@ const EN_V0370 = {
 };
 Object.assign(EN, EN_V0370);
 
+const EN_V0380 = {
+  '规则级限流（需带 rate_limit 模块的 Caddy）': 'Per-rule rate limit (needs Caddy with rate_limit module)',
+  '每秒请求上限 rps': 'Requests per second (rps)',
+  '突发 burst（暂存，Caddy 插件不生效）': 'Burst (stored only; Caddy plugin ignores it)',
+};
+Object.assign(EN, EN_V0380);
+
 module.exports = { COOKIE, LANGS, EN, langOf, t, clientDict };

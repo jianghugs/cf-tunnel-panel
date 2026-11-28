@@ -356,6 +356,11 @@ function validateRoutes(list, prevRoutes = []) {
       headersRes: String(r.headersRes || '').slice(0, 2000),
       timeoutSec: Math.max(0, Math.min(3600, Number(r.timeoutSec) || 0)),
       basicAuth: auth,
+      rateLimit: {
+        enabled: !!(r.rateLimit && r.rateLimit.enabled),
+        rps: Math.max(0, Math.min(100000, Number(r.rateLimit && r.rateLimit.rps) || 0)),
+        burst: Math.max(0, Math.min(1000000, Number(r.rateLimit && r.rateLimit.burst) || 0)),
+      },
       note: String(r.note || '').slice(0, 300),
     });
   }

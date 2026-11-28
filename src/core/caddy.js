@@ -93,6 +93,25 @@ function expandPanelSlots(upstream) {
 function buildRouteHandlers(r) {
   const handle = [];
 
+  // 0) 规则级限流（需要带 caddy-ratelimit 的自定义镜像：CADDY_RATELIMIT=1，否则不写进配置）
+  //    rate_limit 插件没有 burst 字段，burst 先存着不用；events 按 rps 生成，窗口 1s，按来源 IP 计数
+  const rl = r.rateLimit || {};
+  if (rl.enabled && Number(rl.rps) > 0) {
+    if (process.env.CADDY_RATELIMIT === '1') {
+      handle.push({
+        handler: 'rate_limit',
+        zones: [{
+          key: '{remote_host}',
+          events: Math.max(1, Math.round(Number(rl.rps))),
+          window: '1s',
+        }],
+      });
+    } else if (!global.__rlRuleWarned) {
+      global.__rlRuleWarned = true;
+      log('规则里勾了限流，但当前 Caddy 不带 rate_limit 模块 —— 见 docs/RATELIMIT.md 换自定义镜像并设 CADDY_RATELIMIT=1', 'panel');
+    }
+  }
+
   // 1) 基础认证（口令在保存时已转 bcrypt 哈希）
   if (r.basicAuth && r.basicAuth.user && r.basicAuth.hash) {
     handle.push({

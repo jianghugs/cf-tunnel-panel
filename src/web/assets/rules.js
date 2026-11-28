@@ -30,7 +30,8 @@ const TEMPLATES = [
 const NEW_RULE = () => ({
   id: '', name: '', enabled: true, tunnelId: selectedExit || '', host: '', path: '', matchMethod: '',
   ipAllow: '', strip: true, upstream: '', backupUpstream: '', lbTryDuration: 0, lbPolicy: 'round_robin',
-  headersReq: '', headersRes: '', timeoutSec: 0, basicAuth: { user: '', hash: '' }, note: '',
+  headersReq: '', headersRes: '', timeoutSec: 0, basicAuth: { user: '', hash: '' },
+  rateLimit: { enabled: false, rps: 10, burst: 20 }, note: '',
 });
 
 const scopeList = () => rules.filter((r) => (r.tunnelId || '') === selectedExit);
@@ -103,6 +104,9 @@ function ruleHtml(r, i) {
           <div class="field"><label>来源 IP 白名单</label><input data-k="ipAllow" value="${esc(r.ipAllow || '')}" placeholder="192.168.1.0/24, 10.0.0.1" /></div>
           <div class="field"><label>方法限制</label><input data-k="matchMethod" value="${esc(r.matchMethod || '')}" placeholder="GET,POST（留空不限）" /></div>
           <div class="field"><label>超时（秒）</label><input data-k="timeoutSec" value="${esc(r.timeoutSec || 0)}" /></div>
+          <div class="field"><label class="inline"><input class="chk" type="checkbox" data-k="rlOn" ${(r.rateLimit && r.rateLimit.enabled) ? 'checked' : ''} /> 规则级限流（需带 rate_limit 模块的 Caddy）</label></div>
+          <div class="field"><label>每秒请求上限 rps</label><input data-k="rlRps" value="${esc((r.rateLimit && r.rateLimit.rps) || 10)}" /></div>
+          <div class="field"><label>突发 burst（暂存，Caddy 插件不生效）</label><input data-k="rlBurst" value="${esc((r.rateLimit && r.rateLimit.burst) || 20)}" /></div>
           <div class="field"><label>备用上游</label><input data-k="backupUpstream" value="${esc(r.backupUpstream || '')}" placeholder="主上游挂了自动切这里" /></div>
           <div class="field"><label>负载均衡策略</label>
             <select data-k="lbPolicy">
@@ -280,6 +284,7 @@ function collectRule(el, i) {
     headersReq: g('headersReq'), headersRes: g('headersRes'), note: g('note').trim(),
     strip: chk('strip'), enabled: chk('enabled'),
     basicAuth: { user: g('authUser').trim(), hash: (r.basicAuth && r.basicAuth.hash) || '', password: pass || undefined },
+    rateLimit: { enabled: chk('rlOn'), rps: Number(g('rlRps')) || 0, burst: Number(g('rlBurst')) || 0 },
   };
 }
 
