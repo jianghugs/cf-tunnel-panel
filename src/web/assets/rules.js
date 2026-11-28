@@ -31,7 +31,7 @@ const NEW_RULE = () => ({
   id: '', name: '', enabled: true, tunnelId: selectedExit || '', host: '', path: '', matchMethod: '',
   ipAllow: '', strip: true, upstream: '', backupUpstream: '', lbTryDuration: 0, lbPolicy: 'round_robin',
   headersReq: '', headersRes: '', timeoutSec: 0, basicAuth: { user: '', hash: '' },
-  rateLimit: { enabled: false, rps: 10, burst: 20 }, note: '',
+  rateLimit: { enabled: false, rps: 10, burst: 20 }, rewrite: { from: '', to: '' }, note: '',
 });
 
 const scopeList = () => rules.filter((r) => (r.tunnelId || '') === selectedExit);
@@ -121,7 +121,9 @@ function ruleHtml(r, i) {
         </div>
         <div class="form-grid" style="margin-top:10px">
           <div class="field"><label>备注</label><input data-k="note" value="${esc(r.note || '')}" /></div>
-          <div class="field"><label class="inline"><input class="chk" type="checkbox" data-k="strip" ${r.strip ? 'checked' : ''} /> 转发时去掉路径前缀</label></div>
+          <div class="field"><label>路径重写 from（前缀）</label><input data-k="rwFrom" value="${esc((r.rewrite && r.rewrite.from) || '')}" placeholder="/api/v1（留空不重写）" /></div>
+          <div class="field"><label>路径重写 to（替换成）</label><input data-k="rwTo" value="${esc((r.rewrite && r.rewrite.to) || '')}" placeholder="/v2" /></div>
+          <div class="field"><label class="inline"><input class="chk" type="checkbox" data-k="strip" ${r.strip ? 'checked' : ''} /> 转发时去掉路径前缀（与重写二选一）</label></div>
           <div class="field"><label class="inline"><input class="chk" type="checkbox" data-k="enabled" ${r.enabled !== false ? 'checked' : ''} /> 启用这条规则</label></div>
         </div>
       </details>
@@ -285,6 +287,7 @@ function collectRule(el, i) {
     strip: chk('strip'), enabled: chk('enabled'),
     basicAuth: { user: g('authUser').trim(), hash: (r.basicAuth && r.basicAuth.hash) || '', password: pass || undefined },
     rateLimit: { enabled: chk('rlOn'), rps: Number(g('rlRps')) || 0, burst: Number(g('rlBurst')) || 0 },
+    rewrite: { from: g('rwFrom').trim(), to: g('rwTo').trim() },
   };
 }
 

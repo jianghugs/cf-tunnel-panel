@@ -90,6 +90,11 @@ function expandPanelSlots(upstream) {
   return slots.map((port) => `127.0.0.1:${port}`);
 }
 
+// 把用户填的「前缀」按字面转成正则（只转义正则特殊字符，保留路径语义）
+function escapeRegex(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function buildRouteHandlers(r) {
   const handle = [];
 
@@ -125,13 +130,21 @@ function buildRouteHandlers(r) {
     });
   }
 
-  // 2) 剥离路径前缀
-  if (r.strip && r.path) {
+  // 2) 路径重写（前缀替换：from=/api/v1、to=/v2 时，/api/v1/users -> /v2/users）
+  const rw = r.rewrite || {};
+  const rwFrom = String(rw.from || '').trim();
+  const rwTo = String(rw.to || '').trim();
+  if (rwFrom && rwTo) {
+    handle.push({ handler: 'rewrite', uri: rwTo.replace(/\/+$/, '') + '{http.regexp.rw.1}' });
+  }
+
+  // 3) 剥离路径前缀（与路径重写二选一：重写开启时跳过，避免二次改 URI）
+  if (r.strip && r.path && !(rwFrom && rwTo)) {
     const prefix = r.path.replace(/\*+$/, '').replace(/\/+$/, '');
     if (prefix) handle.push({ handler: 'rewrite', strip_path_prefix: prefix });
   }
 
-  // 3) 反向代理
+  // 4) 反向代理
   const main = parseUpstream(r.upstream);
   const slotUps = expandPanelSlots(r.upstream);
   // 只把在监听的槽位写进上游：停着的那一色留着只会让每个请求先吃一次 connect refused
@@ -202,7 +215,15 @@ function buildMatch(r, forcedHost) {
   const explicit = String(r.host || '').split(',').map((s) => s.trim()).filter(Boolean);
   const hosts = explicit.length ? explicit : (forcedHost ? [forcedHost] : []);
   if (hosts.length) m.host = hosts;
-  if (r.path) m.path = [r.path.endsWith('*') ? r.path : r.path.replace(/\/+$/, '') + '*'];
+  const rw = r.rewrite || {};
+  const rwFrom = String(rw.from || '').trim();
+  if (rwFrom) {
+    // 路径重写：match 用 path_regexp 命名捕获，重写时引用 {http.regexp.rw.1}
+    const re = '^' + escapeRegex(rwFrom).replace(/\/+$/, '') + '(/.*)?$';
+    m.path_regexp = { name: 'rw', pattern: re };
+  } else if (r.path) {
+    m.path = [r.path.endsWith('*') ? r.path : r.path.replace(/\/+$/, '') + '*'];
+  }
   if (r.matchMethod) m.method = String(r.matchMethod).split(',').map((s) => s.trim()).filter(Boolean);
   const cidrs = parseCidrs(r.ipAllow);
   if (cidrs.length) m.remote_ip = { ranges: cidrs };

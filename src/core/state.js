@@ -319,6 +319,10 @@ function validateRoutes(list, prevRoutes = []) {
     let p = String(r.path || '').trim();
     if (p && !p.startsWith('/')) p = '/' + p;
     if (p.includes('*') && !p.endsWith('*')) throw new Error(`第 ${idx + 1} 条：路径通配符只支持结尾，如 /files/*`);
+    const rwFrom = String((r.rewrite && r.rewrite.from) || '').trim();
+    const rwTo = String((r.rewrite && r.rewrite.to) || '').trim();
+    if (rwFrom && !rwFrom.startsWith('/')) throw new Error(`第 ${idx + 1} 条：重写 from 要以 / 开头，收到「${rwFrom}」`);
+    if ((rwFrom && !rwTo) || (!rwFrom && rwTo)) throw new Error(`第 ${idx + 1} 条：重写 from / to 要成对填写`);
 
     const method = String(r.matchMethod || '')
       .split(',')
@@ -360,6 +364,10 @@ function validateRoutes(list, prevRoutes = []) {
         enabled: !!(r.rateLimit && r.rateLimit.enabled),
         rps: Math.max(0, Math.min(100000, Number(r.rateLimit && r.rateLimit.rps) || 0)),
         burst: Math.max(0, Math.min(1000000, Number(r.rateLimit && r.rateLimit.burst) || 0)),
+      },
+      rewrite: {
+        from: String((r.rewrite && r.rewrite.from) || '').trim().slice(0, 200),
+        to: String((r.rewrite && r.rewrite.to) || '').trim().slice(0, 200),
       },
       note: String(r.note || '').slice(0, 300),
     });

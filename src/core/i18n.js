@@ -1257,4 +1257,11 @@ const EN_V0380 = {
 };
 Object.assign(EN, EN_V0380);
 
+const EN_V0390 = {
+  '路径重写 from（前缀）': 'Rewrite from (path prefix)',
+  '路径重写 to（替换成）': 'Rewrite to (replacement prefix)',
+  '转发时去掉路径前缀（与重写二选一）': 'Strip path prefix on forward (mutually exclusive with rewrite)',
+};
+Object.assign(EN, EN_V0390);
+
 module.exports = { COOKIE, LANGS, EN, langOf, t, clientDict };
