@@ -1263,5 +1263,17 @@ const EN_V0390 = {
   '转发时去掉路径前缀（与重写二选一）': 'Strip path prefix on forward (mutually exclusive with rewrite)',
 };
 Object.assign(EN, EN_V0390);
+const EN_V0400 = {
+  '证书到期': 'Certificates',
+  '从 Cloudflare 拉当前 zone 的边缘证书，快到期会标黄标红': 'Edge certificates from Cloudflare; expiring soon are highlighted.',
+  '这个 zone 没有边缘证书（可能是 SaaS zone 或还没启用 Universal SSL）': 'No edge certificates in this zone (SaaS zone or Universal SSL not enabled).',
+  '类型': 'Type',
+  '到期': 'Expires',
+  '剩余': 'Left',
+  '天': 'd',
+  '自动续期': 'Auto-renew',
+};
+Object.assign(EN, EN_V0400);
+
 
 module.exports = { COOKIE, LANGS, EN, langOf, t, clientDict };

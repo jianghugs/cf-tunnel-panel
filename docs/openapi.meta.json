@@ -233,6 +233,7 @@
     "/api/cf/cache/rule": "GET 读取缓存规则；POST 设置缓存规则",
     "/api/cf/cache/warm": "预热边缘缓存（返回命中机房）",
     "/api/cf/verify": "校验 Cloudflare API 凭据是否可用",
+    "/api/cf/certs": "列出当前 zone 的边缘证书及其到期日（按剩余天数排序）",
     "/api/cf/dns": "GET 列出 DNS 记录；POST 新增记录",
     "/api/traffic": "最近的流量采样点",
     "/api/traffic/paths": "热门路径与命中次数",

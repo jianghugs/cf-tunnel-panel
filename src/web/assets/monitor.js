@@ -312,6 +312,39 @@ async function load() {
     }
   }
 
+  function certTag(c) {
+    if (c.status && c.status !== 'active') {
+      return `<span class="tag warn" title="状态：${esc(c.status)}">${esc(c.status)}</span>`;
+    }
+    if (c.daysLeft == null) return '<span class="tag muted" title="Universal SSL 由 Cloudflare 自动续期，不暴露到期日">自动续期</span>';
+    if (c.daysLeft < 0) return `<span class="tag err">已过期 ${Math.abs(c.daysLeft)} 天</span>`;
+    if (c.daysLeft <= 14) return `<span class="tag err">${c.daysLeft} 天</span>`;
+    if (c.daysLeft <= 30) return `<span class="tag warn">${c.daysLeft} 天</span>`;
+    return `<span class="tag ok">${c.daysLeft} 天</span>`;
+  }
+
+  async function loadCerts() {
+    const b = $('#certBody');
+    if (!b) return;
+    try {
+      const d = await api('/api/cf/certs');
+      if (!d.ok) throw new Error(d.error || '查询失败');
+      if (!d.certs || !d.certs.length) {
+        b.innerHTML = '<div class="empty empty-inline">这个 zone 没有边缘证书（可能是 SaaS zone 或还没启用 Universal SSL）</div>';
+        return;
+      }
+      b.innerHTML = `<div class="tbl-wrap"><table class="stackable"><thead><tr><th>域名</th><th>类型</th><th>到期</th><th>剩余</th></tr></thead><tbody>${
+        d.certs.map((c) => `<tr>
+          <td data-label="域名">${(c.hosts || []).map((h) => `<span class="mono">${esc(h)}</span>`).join('<br>') || '—'}</td>
+          <td data-label="类型"><span class="tag acc">${esc(c.type || '—')}</span></td>
+          <td class="mono muted" data-label="到期">${c.expiresOn ? esc(new Date(c.expiresOn).toLocaleString()) : '—'}</td>
+          <td data-label="剩余">${certTag(c)}</td>
+        </tr>`).join('')}</tbody></table></div>`;
+    } catch (e) {
+      b.innerHTML = `<div class="hint err">${esc(e.message)}</div>`;
+    }
+  }
+
   async function loadUpHealth() {
     const b = $('#upHealthBody');
     if (!b) return;
@@ -389,6 +422,8 @@ async function load() {
     paintLastCheck();
     paintCheckHistory();
     loadUpHealth().catch(() => {});
+    loadCerts().catch(() => {});
+    if ($('#btnCertRefresh')) $('#btnCertRefresh').addEventListener('click', () => loadCerts().catch(() => {}));
     // /monitor#check：命令面板「一键体检」跳过来时，滚到体检卡并直接跑一次
     if (location.hash === '#check' && $('#checkCard')) {
       $('#checkCard').scrollIntoView({ block: 'start', behavior: 'smooth' });

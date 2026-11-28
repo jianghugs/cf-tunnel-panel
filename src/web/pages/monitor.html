@@ -28,6 +28,13 @@
     </div>
   </div>
 
+  <div class="card" id="certCard">
+    <div class="hd"><h2>证书到期</h2>
+      <div class="sub">从 Cloudflare 拉当前 zone 的边缘证书，快到期会标黄标红</div>
+      <div class="right"><button class="sm ghost" id="btnCertRefresh">刷新</button></div></div>
+    <div class="bd" id="certBody"><div class="empty">正在查询…</div></div>
+  </div>
+
   <div class="grid4" id="monStats">
     <div class="stat"><div class="k">Prometheus</div><div class="v" id="monReady">—</div></div>
     <div class="stat"><div class="k">抓取目标</div><div class="v" id="monTargets">—</div></div>

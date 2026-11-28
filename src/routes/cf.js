@@ -408,6 +408,28 @@ async function handle(p, req, res, url) {
       } catch (e) { return sendJson(res, 400, { ok: false, error: e.message }); }
     }
   }
+  if (p === '/api/cf/certs' && req.method === 'GET') {
+    try {
+      const cf = state.settings.cf || {};
+      if (!cf.zoneId) throw new Error('还没填 Zone ID（设置卡里点「验证 token」可以自动带出来）');
+      const packs = await cfApi(`/zones/${cf.zoneId}/ssl/certificate_packs?status=all`);
+      const now = Date.now();
+      const certs = (packs || []).map((pk) => {
+        const exp = Date.parse(pk.expires_on);
+        return {
+          id: pk.id,
+          type: pk.type || 'universal',
+          hosts: Array.isArray(pk.hosts) ? pk.hosts : [],
+          status: pk.status || 'unknown',
+          expiresOn: pk.expires_on || null,
+          daysLeft: Number.isFinite(exp) ? Math.ceil((exp - now) / 86400000) : null,
+        };
+      }).sort((a, b) => (a.daysLeft == null ? 1 : b.daysLeft == null ? -1 : a.daysLeft - b.daysLeft));
+      return sendJson(res, 200, { ok: true, zoneId: cf.zoneId, certs });
+    } catch (e) {
+      return sendJson(res, 400, { ok: false, error: e.message });
+    }
+  }
   if (p === '/api/cf/dns' && req.method === 'GET') {
     try {
       const cf = state.settings.cf || {};
