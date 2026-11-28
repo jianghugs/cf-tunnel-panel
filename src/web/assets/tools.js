@@ -32,6 +32,19 @@ async function loadDocker() {
   }
 }
 
+function fmtLeft(sec) {
+  if (sec <= 0) return '已过期';
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s2 = sec % 60;
+  const p = (n) => String(n).padStart(2, '0');
+  return h > 0 ? `剩余 ${h}:${p(m)}:${p(s2)}` : `剩余 ${m}:${p(s2)}`;
+}
+setInterval(() => {
+  const now = Date.now();
+  document.querySelectorAll('[data-countdown]').forEach((el) => {
+    el.textContent = fmtLeft(Math.max(0, Math.round((Number(el.dataset.countdown) - now) / 1000)));
+  });
+}, 1000);
+
 async function loadShares() {
   const box = $('#shareList');
   try {
@@ -44,13 +57,17 @@ async function loadShares() {
         </div>`;
       return;
     }
-    box.innerHTML = list.map((s) => `<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding:8px 0">
+    box.innerHTML = list.map((s) => `<div class="share-item">
+        <div class="share-qrw">
+          ${s.qr ? `<img class="share-qr" src="${esc(s.qr)}" alt="二维码">` : `<div class="share-qr share-qr-none">QR</div>`}
+          <button class="primary sm share-copy" data-copy="${esc(s.url)}">复制链接</button>
+        </div>
         <div class="grow">
           <div><strong>${esc(s.name)}</strong> <span class="tag">${esc(s.upstream)}</span></div>
-          <div class="mono" style="font-size:11.5px;word-break:break-all">${esc(s.url)}</div>
-          <div class="muted" style="font-size:11.5px">剩余 ${Math.round(s.leftSec / 60)} 分钟</div>
+          <div class="mono share-url">${esc(s.url)}</div>
+          <div class="muted share-cd" data-countdown="${s.expiresAt}">${fmtLeft(s.leftSec)}</div>
         </div>
-        <div class="row">
+        <div class="row share-ops">
           <button class="sm ghost" data-copy="${esc(s.url)}">复制</button>
           <button class="sm danger" data-del="${esc(s.id)}">删除</button>
         </div>

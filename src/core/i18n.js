@@ -1243,4 +1243,11 @@ const EN_V0360 = {
   '条上游': 'upstreams',
 };
 Object.assign(EN, EN_V0360);
+const EN_V0370 = {
+  '二维码': 'QR code',
+  '复制链接': 'Copy link',
+  '已过期': 'Expired',
+};
+Object.assign(EN, EN_V0370);
+
 module.exports = { COOKIE, LANGS, EN, langOf, t, clientDict };

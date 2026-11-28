@@ -22,12 +22,17 @@ const {
   http,
   crypto,
 } = require('./_deps');
+const QRCode = require('qrcode');
 
 async function handle(p, req, res, url) {
   if (p === '/api/shares' && req.method === 'GET') {
-    return sendJson(res, 200, {
-      shares: (state.shares || []).map((s) => ({ ...s, url: shareUrl(s.token), leftSec: Math.max(0, Math.round((s.expiresAt - Date.now()) / 1000)) })),
-    });
+    const shares = await Promise.all((state.shares || []).map(async (s) => {
+      const u = shareUrl(s.token);
+      let qr = null;
+      try { qr = await QRCode.toDataURL(u, { width: 220, margin: 1, errorCorrectionLevel: 'M' }); } catch (e) { qr = null; }
+      return { ...s, url: u, qr, leftSec: Math.max(0, Math.round((s.expiresAt - Date.now()) / 1000)) };
+    }));
+    return sendJson(res, 200, { shares });
   }
   if (p === '/api/shares' && req.method === 'POST') {
     try {
@@ -45,7 +50,9 @@ async function handle(p, req, res, url) {
       saveState('share-add');
       await pushCaddy();
       log(`已生成分享链接 ${s.name} → ${up}（${minutes} 分钟）`, 'panel');
-      return sendJson(res, 200, { ok: true, share: { ...s, url: shareUrl(s.token) }, caddy });
+      let qr = null;
+      try { qr = await QRCode.toDataURL(shareUrl(s.token), { width: 220, margin: 1, errorCorrectionLevel: 'M' }); } catch (e) { qr = null; }
+      return sendJson(res, 200, { ok: true, share: { ...s, url: shareUrl(s.token), qr }, caddy });
     } catch (e) {
       return sendJson(res, 400, { ok: false, error: e.message });
     }
